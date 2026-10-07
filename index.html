@@ -390,6 +390,13 @@ html.tm .seg.off{background:linear-gradient(180deg,#5a5a5a,#2e2e2e)}
 html.tm .archip.off{outline-color:#fff;box-shadow:0 0 8px rgba(255,255,255,.4)}
 html.tm .arcard.adz{outline-color:#fff}
 html.tm ::selection{background:rgba(255,255,255,.28)}
+
+/* ===== Dashboard: full page lock (no vertical scroll, desktop) ===== */
+@media (min-width:1024px){
+html.dlock,html.dlock body{height:100%;overflow:hidden!important;overscroll-behavior:none}
+html.dlock body>div.flex{height:100dvh;min-height:0!important;overflow:hidden}
+html.dlock #main{overflow:hidden}
+}
 </style><script>try{var t=localStorage.getItem("cctv_theme"),c=document.documentElement.classList;if(t==="blue")c.remove("tb");if(t==="aurora")c.add("ta");if(t==="mono")c.add("tm")}catch(e){}</script></head><body>
 <div class="flex min-h-screen">
 <div id="sbbk" class="noprint" onclick="sbT(0)"></div>
@@ -811,8 +818,8 @@ const dxRg=k=>{V.rg=k;try{localStorage.setItem('cctv_rg',k)}catch(e){}DXSEEN=0;R
 const dnav=n=>{V.d=clampD(fd(Date.parse(V.d+'T12:00:00+05:30')+n*DAY));R()};
 function R(){TT.length=0;V.d=clampD(V.d);if(V.p!=='track'&&V.sh==='D30')V.sh='ALL';V.m=clampM(V.m);if(V.hd)V.hd=clampD(V.hd);const n=NAV.find(x=>x[0]===V.p);$('#usr').innerHTML=opt(S.users.map(u=>[String(u.id),u.name]),String(S.uid));
  $('#nav').innerHTML=NAV.map(x=>`<button onclick="go('${x[0]}')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm ${V.p===x[0]?'bg-sky-500/15 text-sky-300 border border-sky-500/40':'text-slate-400 hover:bg-white/5'}"><i data-lucide="${x[2]}" class="w-4 h-4"></i>${x[1]}</button>`).join('');
- const dsh=V.p==='dash';$('#main').className=dsh?'p-3':'p-5';$('#main').innerHTML=`<div class="${dsh?'mb-2 flex flex-wrap items-center justify-between gap-2':'mb-4'} noprint"><h1 class="${dsh?'text-lg':'text-2xl'} font-bold tracking-wide">${n[1].toUpperCase()}</h1>${dsh?dxSel():`<div class="text-sm text-slate-400">${SUB[V.p]||''}</div>`}</div>`+n[3]();document.documentElement.classList.toggle('nosb',dsh);$('#dd').innerHTML='<i data-lucide="calendar" class="w-3.5 h-3.5"></i>'+dmy(V.d)+(V.d===fd(now())?' <b>Today</b>':'');$('#dpv').disabled=V.d<=START_D;$('#dnx').disabled=V.d>=fd(now());lucide.createIcons();dxFit()}
-function dxFit(){const d=document.querySelector('.dx');if(!d)return;if(innerWidth<1024){d.style.height='';return}d.style.height=Math.max(520,innerHeight-(d.getBoundingClientRect().top+scrollY)-12)+'px'}
+ const dsh=V.p==='dash';$('#main').className=dsh?'p-3':'p-5';$('#main').innerHTML=`<div class="${dsh?'mb-2 flex flex-wrap items-center justify-between gap-2':'mb-4'} noprint"><h1 class="${dsh?'text-lg':'text-2xl'} font-bold tracking-wide">${n[1].toUpperCase()}</h1>${dsh?dxSel():`<div class="text-sm text-slate-400">${SUB[V.p]||''}</div>`}</div>`+n[3]();document.documentElement.classList.toggle('nosb',dsh);$('#dd').innerHTML='<i data-lucide="calendar" class="w-3.5 h-3.5"></i>'+dmy(V.d)+(V.d===fd(now())?' <b>Today</b>':'');$('#dpv').disabled=V.d<=START_D;$('#dnx').disabled=V.d>=fd(now());lucide.createIcons();dxFit();requestAnimationFrame(dxFit);setTimeout(dxFit,350)}
+function dxFit(){const d=document.querySelector('.dx'),H=document.documentElement,lk=!!d&&innerWidth>=1024;H.classList.toggle('dlock',lk);if(!d)return;if(!lk){d.style.height='';return}scrollTo(0,0);const m=document.getElementById('main'),pb=m?parseFloat(getComputedStyle(m).paddingBottom)||0:0;d.style.height=Math.max(300,Math.floor(innerHeight-d.getBoundingClientRect().top-pb-2))+'px'}
 addEventListener('resize',dxFit);
 let _wb=innerWidth<640?0:innerWidth<1024?1:2;addEventListener('resize',()=>{const b=innerWidth<640?0:innerWidth<1024?1:2;if(b!==_wb){_wb=b;if(b===2)sbT(0);if(V.p==='dash')R()}});
 document.addEventListener('input',e=>{const t=e.target;if(!(t.tagName==='INPUT'&&t.matches('.font-mono[maxlength="5"]'))||!/^insert/.test(e.inputType||''))return;const d=t.value.replace(/\D/g,'').slice(0,4);t.value=d.length>=2?d.slice(0,2)+':'+d.slice(2):d});
