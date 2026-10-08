@@ -425,7 +425,8 @@ const REASONS=['Power Failure','Network Failure','Camera Fault','DVR/NVR Issue',
 const SH={A:[6,14,'06:00 - 14:00'],B:[14,22,'14:00 - 22:00'],C:[22,30,'22:00 - 06:00'],ALL:[6,30,'06:00 - 06:00'],D30:[0,0,'Last 30 days']};
 const ov=(a,b,c,d)=>Math.max(0,Math.min(b,d)-Math.max(a,c)),evEnd=e=>e.end??now();
 let COL={};try{COL=JSON.parse(localStorage.getItem('cctv_col')||'{}')}catch(e){}
-let S={uid:1,plant:'Plant Name – Security Department',users:[{id:1,name:'Manohar Patel',role:'Admin'}],resources:[],cams:[],col:COL,audit:[],events:[]};try{S.users.forEach(u=>{const n=localStorage.getItem('cctv_uname_'+u.id);if(n)u.name=n})}catch(e){}
+const PL_OLD='Plant Name – Security Department',PL_NEW='Vedanta Limited Chhattisgarh Thermal Power Plant – Security Department',plFix=v=>(v===PL_OLD||v==='Plant Name')?PL_NEW:String(v).replace('Vedanta Limited, Chhattisgarh','Vedanta Limited Chhattisgarh');
+let S={uid:1,plant:PL_NEW,users:[{id:1,name:'Manohar Patel',role:'Admin'}],resources:[],cams:[],col:COL,audit:[],events:[]};try{S.users.forEach(u=>{const n=localStorage.getItem('cctv_uname_'+u.id);if(n)u.name=n})}catch(e){}
 const save=()=>{try{localStorage.setItem('cctv_col',JSON.stringify(S.col))}catch(e){}push()};
 const TYPES=['PTZ','BULLET','DOME'];
 const AREAS=["Main Plant Area", "CHP Area", "Township Area"],AREA_UN={"Main Plant Area": ["326", "336", "46", "40", "49", "43", "452", "166", "321", "146", "156", "176", "186", "191", "301", "311", "731", "736", "356", "719", "714", "306", "574", "201", "206", "221", "226", "316", "241", "251", "256", "266", "281", "286", "707", "706", "757", "446", "63", "68", "73", "449", "629", "58", "78", "443", "694", "624", "751", "709", "710", "713", "566", "642", "485", "748", "25", "462", "30", "19", "22", "9", "35", "14", "505", "515", "556", "141"], "CHP Area": ["680", "741", "756", "525", "657", "465", "495", "88", "691", "93", "475", "440", "546", "594", "589", "584", "599", "579", "571", "609", "721", "535", "55"], "Township Area": ["720", "725", "728", "98", "652", "614", "101", "111", "386", "391", "396", "406", "376", "381", "411", "401", "416", "419", "422"]};
@@ -541,8 +542,8 @@ async function xlsX(){const M=modelOf();if(!M)return toast('Is page par export a
    const anyWrap=cols.some(c=>c.wr);let gi=-1,pg;
    sh.rows.forEach((rw,ri)=>{if(rw.g===undefined||rw.g!==pg){gi++;pg=rw.g}const row=ws.getRow(hr+1+ri);if(!anyWrap)row.height=21;const zb=ri%2?'FFFFFFFF':'FFF1F5F9';
     cols.forEach((c,ci)=>{const v=rw.c[idx[ci]],x=row.getCell(ci+1);x.border=B;x.fill=fill(c.m?'FFE6EEFB':zb);x.font={name:'Calibri',size:10,color:{argb:'FF0F172A'},bold:!!c.m};x.alignment={vertical:'middle',horizontal:c.a==='c'?'center':'left',wrapText:!!(c.wr||c.m),indent:c.a==='c'?0:1};
-     if(c.t==='pct'){if(v===null||v===undefined){x.value='—'}else{x.value=v/100;x.numFmt='0.00%';x.font={name:'Calibri',size:10,bold:true,color:{argb:v>=99?'FF15803D':v>=95?'FFB45309':'FFBE123C'}}}}
-     else if(c.t==='day'){if(v===null||v===undefined){x.value='';x.fill=fill('FFE2E8F0')}else{x.value=Math.round(v*10)/10;x.numFmt='0.#';x.fill=fill(v>=99?'FFBBF7D0':v>=95?'FFFDE68A':'FFFECACA');x.font={name:'Calibri',size:8,bold:true,color:{argb:'FF0F172A'}}}}
+     if(c.t==='pct'){if(v===null||v===undefined){x.value='—'}else{x.value=v/100;x.numFmt=Math.abs(v-Math.round(v))<0.005?'0%':'0.00%';x.font={name:'Calibri',size:10,bold:true,color:{argb:v>=99?'FF15803D':v>=95?'FFB45309':'FFBE123C'}}}}
+     else if(c.t==='day'){if(v===null||v===undefined){x.value='';x.fill=fill('FFE2E8F0')}else{x.value=Math.round(v*10)/10;x.numFmt='General';x.fill=fill(v>=99?'FFBBF7D0':v>=95?'FFFDE68A':'FFFECACA');x.font={name:'Calibri',size:8,bold:true,color:{argb:'FF0F172A'}}}}
      else{x.value=v===undefined?'':v;if(c.st){const t=String(v);x.font={name:'Calibri',size:10,bold:true,color:{argb:/^OFFLINE/.test(t)?'FFBE123C':'FF15803D'}}}}})});
    cols.forEach((c,ci)=>{if(!c.m)return;let a=0;for(let i=1;i<=sh.rows.length;i++){if(i===sh.rows.length||sh.rows[i].g!==sh.rows[a].g){if(i-1>a)ws.mergeCells(hr+1+a,ci+1,hr+i,ci+1);a=i}}});
    if(!cols.some(c=>c.m)&&sh.rows.length)ws.autoFilter={from:{row:hr,column:1},to:{row:hr,column:n}};
@@ -858,7 +859,7 @@ async function loadAll(){await PQ;const D={};await Promise.all(TN.concat('settin
  const st={};D.settings.forEach(x=>st[x.key]=x.value);
  if(!D.resources.length&&!D.cameras.length&&!st.seeded){await seedDB();LASTSYNC=Date.now();return}
  S.resources=D.resources.map(TB.resources.from);S.cams=D.cameras.map(TB.cameras.from);S.events=D.events.map(TB.events.from);S.audit=D.audit.map(TB.audit.from).sort((a,b)=>b.at-a.at);
- if(typeof st.plant==='string'){S.plant=st.plant;SNAPP=st.plant}else SNAPP=null;
+ if(typeof st.plant==='string'){S.plant=plFix(st.plant);SNAPP=st.plant}else SNAPP=null;
  S.am=(st.areas&&typeof st.areas==='object')?st.areas:{};SNAPA=J(S.am);
  fixTypes();snapAll();LASTSYNC=Date.now()}
 async function pushNow(){
@@ -880,7 +881,7 @@ function onChange(p){if(!LOADED)return;const t=p.table,ty=p.eventType;
   if(ty==='DELETE'){const id=p.old&&p.old.id,i=A.findIndex(x=>x.id===id);if(i>=0){A.splice(i,1);rr()}delete SNAP[t][id];return}
   const o=T.from(p.new),j=J(T.to(o,0));if(SNAP[t][o.id]===j)return;
   const i=A.findIndex(x=>x.id===o.id);if(i>=0)A[i]=o;else A.push(o);if(t==='audit')A.sort((a,b)=>b.at-a.at);SNAP[t][o.id]=j;rr();return}
- if(t==='settings'){const r=p.new;if(r&&r.key==='areas'&&r.value&&typeof r.value==='object'){const j=J(r.value);if(j!==SNAPA){S.am=r.value;SNAPA=j;rr()}return}if(r&&r.key==='plant'&&typeof r.value==='string'&&r.value!==S.plant){S.plant=r.value;SNAPP=r.value;rr()}return}
+ if(t==='settings'){const r=p.new;if(r&&r.key==='areas'&&r.value&&typeof r.value==='object'){const j=J(r.value);if(j!==SNAPA){S.am=r.value;SNAPA=j;rr()}return}if(r&&r.key==='plant'&&typeof r.value==='string'&&plFix(r.value)!==S.plant){S.plant=plFix(r.value);SNAPP=r.value;rr()}return}
  if(t==='resources'||t==='cameras')structSync()}
 function subscribe(){DB.channel('cctv-live').on('postgres_changes',{event:'*',schema:'public'},onChange).subscribe(s=>{if(s==='SUBSCRIBED'){setSync('ok');if(SUBN++)resync()}else if(s==='CHANNEL_ERROR'||s==='TIMED_OUT'||s==='CLOSED')setSync('wait')})}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&LOADED&&Date.now()-LASTSYNC>15000)resync()});addEventListener('online',()=>{if(LOADED)resync()});
