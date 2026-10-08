@@ -478,8 +478,9 @@ function bsrch(i){const q=i.value.trim().toLowerCase();if(!q)return;const all=[.
  toast(nw.length?m.map(x=>'UN '+x.dataset.un).join(', ')+' selected':'Pehle se selected hai',nw.length?'ok':'warn');
  m[0].scrollIntoView({block:'nearest'});i.value='';i.focus()}
 function ball(v){document.querySelectorAll('.bc,.br').forEach(x=>x.checked=v);bcnt()}
-function bcnt(){const n=document.querySelectorAll('.bc:checked').length;$('#bn').textContent=n;const sl=$('#bsl');if(sl)sl.innerHTML=[...document.querySelectorAll('.bc:checked')].map(x=>`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-sky-400/50 bg-sky-500/10 text-[11px] text-sky-200">UN ${x.dataset.un} · ${x.dataset.l}<button type="button" class="text-slate-400 hover:text-rose-300" onclick="bun('${x.value}')">✕</button></span>`).join('');document.querySelectorAll('.br').forEach(b=>{const L=[...document.querySelectorAll('.bc[data-r="'+b.dataset.r+'"]')];b.checked=L.length>0&&L.every(x=>x.checked)})}
-function bulkM(mode){if(!can())return toast('Viewer cannot change status','err');
+let BSEL=[];
+function bcnt(){const ch=[...document.querySelectorAll('.bc:checked')],n=ch.length,ids=new Set(ch.map(x=>x.value));BSEL=BSEL.filter(i=>ids.has(i));ch.forEach(x=>{if(!BSEL.includes(x.value))BSEL.push(x.value)});$('#bn').textContent=n;const sl=$('#bsl');if(sl)sl.innerHTML=BSEL.map(i=>document.querySelector('.bc[value="'+i+'"]')).filter(Boolean).map(x=>`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-sky-400/50 bg-sky-500/10 text-[11px] text-sky-200">UN ${x.dataset.un} · ${x.dataset.l}<button type="button" class="text-slate-400 hover:text-rose-300" onclick="bun('${x.value}')">✕</button></span>`).join('');document.querySelectorAll('.br').forEach(b=>{const L=[...document.querySelectorAll('.bc[data-r="'+b.dataset.r+'"]')];b.checked=L.length>0&&L.every(x=>x.checked)})}
+function bulkM(mode){BSEL=[];if(!can())return toast('Viewer cannot change status','err');
  const off=mode==='off',cams=S.cams.filter(c=>c.active&&(off||openEv(c.id)));
  if(!cams.length)return toast(off?'Koi active camera nahi hai':'Abhi koi camera OFFLINE nahi hai','warn');
  const list=S.resources.map(r=>{const L=cams.filter(c=>c.resId===r.id);if(!L.length)return'';
