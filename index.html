@@ -498,6 +498,11 @@ function bsrch(i){const q=i.value.trim().toLowerCase();if(!q)return;const all=[.
 function ball(v){document.querySelectorAll('.bc,.br').forEach(x=>x.checked=v);bcnt()}
 let BSEL=[];
 function bcnt(){const ch=[...document.querySelectorAll('.bc:checked')],n=ch.length,ids=new Set(ch.map(x=>x.value));BSEL=BSEL.filter(i=>ids.has(i));ch.forEach(x=>{if(!BSEL.includes(x.value))BSEL.push(x.value)});$('#bn').textContent=n;const sl=$('#bsl');if(sl)sl.innerHTML=BSEL.map(i=>document.querySelector('.bc[value="'+i+'"]')).filter(Boolean).map(x=>`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-sky-400/50 bg-sky-500/10 text-[11px] text-sky-200">UN ${x.dataset.un} · ${x.dataset.l}<button type="button" class="text-slate-400 hover:text-rose-300" onclick="bun('${x.value}')">✕</button></span>`).join('');document.querySelectorAll('.br').forEach(b=>{const L=[...document.querySelectorAll('.bc[data-r="'+b.dataset.r+'"]')];b.checked=L.length>0&&L.every(x=>x.checked)})}
+function xnum(){document.querySelectorAll('.xr').forEach((r,i)=>{r.querySelector('.xn').textContent='Event '+(i+2)})}
+function xadd(){const h=document.createElement('div');h.className='xr rounded-lg border border-slate-600/50 p-2 mt-2';
+ h.innerHTML='<div class="flex items-center justify-between text-xs text-sky-300"><b class="xn"></b><button type="button" class="text-slate-400 hover:text-rose-300" onclick="xdel(this)">✕ Remove</button></div><div class="text-[11px] text-slate-300 mt-1">Went OFF (Start)</div><div class="grid grid-cols-2 gap-2 mt-1"><input type="date" class="in xsd"><input class="in font-mono xst" placeholder="HH:mm" inputmode="numeric" maxlength="5"></div><div class="text-[11px] text-slate-300 mt-2">Back ON (End) – blank = still OFFLINE</div><div class="grid grid-cols-2 gap-2 mt-1"><input type="date" class="in xed"><input class="in font-mono xet" placeholder="HH:mm" inputmode="numeric" maxlength="5"></div>';
+ const box=document.getElementById('xev');box.appendChild(h);xnum();h.querySelector('.xsd').focus()}
+function xdel(b){b.closest('.xr').remove();xnum()}
 function bulkM(mode){BSEL=[];if(!can())return toast('Viewer cannot change status','err');
  const off=mode==='off',cams=S.cams.filter(c=>c.active&&(off||openEv(c.id)));
  if(!cams.length)return toast(off?'No active cameras':'No camera is OFFLINE right now','warn');
@@ -505,15 +510,26 @@ function bulkM(mode){BSEL=[];if(!can())return toast('Viewer cannot change status
   return`<div class="mb-3"><label class="flex items-center gap-2 text-sm font-semibold text-sky-300"><input type="checkbox" class="br" data-r="${r.id}" onchange="bsel('${r.id}',this.checked)">${esc(r.name)} (${L.length})</label><div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 pl-6">${L.map(c=>`<label class="flex items-center gap-2 text-xs py-0.5"><input type="checkbox" class="bc" data-r="${r.id}" data-un="${esc(c.un)}" data-l="${esc(c.loc)}" data-ip="${esc(c.ip)}" value="${c.id}" onchange="bcnt()">${esc(c.loc)} · UN ${c.un}${openEv(c.id)?' <span class="text-rose-300">(offline now)</span>':''}</label>`).join('')}</div></div>`}).join('');
  const pick=`<div><div class="flex items-center mb-2 text-xs"><label class="flex items-center gap-2"><input type="checkbox" onchange="ball(this.checked)"> Select All</label><input id="bq" class="in !py-1 !px-2 text-xs w-[4.6rem] ml-2" aria-label="UN / IP search" maxlength="6" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();bsrch(this)}"><span class="text-slate-300 whitespace-nowrap ml-auto">Selected: <b id="bn" class="text-sky-300">0</b> / ${cams.length}</span></div><div class="in max-h-56 overflow-auto">${list}</div><div id="bsl" class="flex flex-wrap gap-1.5 mt-2"></div></div>`;
  const fdv=t=>`<div class="grid grid-cols-2 gap-2 mt-1"><input id="${t}d" type="date" class="in" value="${fd(now())}"><input id="${t}t" class="in font-mono" placeholder="HH:mm" inputmode="numeric" maxlength="5" value="${ft(now())}"></div>`;
- if(off)modal('Bulk Offline / Backdate Entry',pick+F('Went OFF (Start) date / time',dtf('s',now()))+F('Back ON (End) – if left empty, the camera is still treated as OFFLINE',`<div class="grid grid-cols-2 gap-2 mt-1"><input id="ed" type="date" class="in"><input id="et" class="in font-mono" placeholder="HH:mm" inputmode="numeric" maxlength="5"></div>`)+F('Reason',`<select id="r" class="in mt-1 w-full">${opt(REASONS)}</select>`)+F('Remarks','<textarea id="m" rows="2" class="in mt-1 w-full"></textarea>')+F('Reported By',ro(U().name)),()=>{
+ if(off)modal('Bulk Offline / Backdate Entry',pick+F('Went OFF (Start) date / time',dtf('s',now()))+F('Back ON (End) – if left empty, the camera is still treated as OFFLINE',`<div class="grid grid-cols-2 gap-2 mt-1"><input id="ed" type="date" class="in"><input id="et" class="in font-mono" placeholder="HH:mm" inputmode="numeric" maxlength="5"></div>`)+'<div><div id="xev"></div><button type="button" class="btn !text-xs mt-2" onclick="xadd()">+ Add another OFF/ON event (same camera, multiple times)</button></div>'+F('Reason',`<select id="r" class="in mt-1 w-full">${opt(REASONS)}</select>`)+F('Remarks','<textarea id="m" rows="2" class="in mt-1 w-full"></textarea>')+F('Reported By',ro(U().name)),()=>{
   const ids=[...document.querySelectorAll('.bc:checked')].map(x=>x.value);if(!ids.length)return toast('Select at least one camera','err');
   const s=toMs(g('sd'),g('st')),open=!g('ed')&&!g('et'),en=open?null:toMs(g('ed'),g('et'));
-  if(isNaN(s)||(!open&&isNaN(en)))return toast('Invalid date/time (HH:mm, 24h)','err');
-  if(s>now()||(en!==null&&en>now()))return toast('Time cannot be in the future','err');
-  if(en!==null&&en<=s)return toast('End time must be after the start time','err');
-  const bad=ids.filter(id=>overl(id,s,en??Infinity));if(bad.length)return toast('These cameras already have an event at this time (UN): '+bad.map(id=>camOf(id).un).join(', '),'err');
-  ids.forEach(id=>S.events.push({id:nid(),cameraId:id,status:'OFFLINE',start:s,end:en,reason:g('r'),remarks:g('m'),reportedBy:U().name,createdAt:now(),updatedAt:now()}));
-  save();closeM();toast(ids.length+' camera entries saved','ok');R()},'Save Entry','max-w-2xl');
+  if(isNaN(s)||(!open&&isNaN(en)))return toast('Event 1: Invalid date/time (HH:mm, 24h)','err');
+  const EV=[{n:1,s,e:en}];
+  for(const [i,r] of [...document.querySelectorAll('.xr')].entries()){
+   const v=k=>r.querySelector('.'+k).value.trim();
+   if(!v('xsd')&&!v('xst')&&!v('xed')&&!v('xet'))continue;
+   const xs=toMs(v('xsd'),v('xst')),xo=!v('xed')&&!v('xet'),xe=xo?null:toMs(v('xed'),v('xet'));
+   if(isNaN(xs)||(!xo&&isNaN(xe)))return toast('Event '+(i+2)+': Invalid date/time (HH:mm, 24h)','err');
+   EV.push({n:i+2,s:xs,e:xe})}
+  for(const x of EV){
+   if(x.s>now()||(x.e!==null&&x.e>now()))return toast('Event '+x.n+': Time cannot be in the future','err');
+   if(x.e!==null&&x.e<=x.s)return toast('Event '+x.n+': End time must be after the start time','err')}
+  const so=[...EV].sort((p,q)=>p.s-q.s);
+  for(let i=1;i<so.length;i++){const pe=so[i-1].e===null?Infinity:so[i-1].e;if(so[i].s<pe)return toast('Event '+so[i-1].n+' and Event '+so[i].n+' overlap each other (an OFFLINE with no End must be the last event)','err')}
+  const bad=[];ids.forEach(id=>EV.forEach(x=>{if(overl(id,x.s,x.e??Infinity))bad.push('UN '+camOf(id).un+' (Event '+x.n+')')}));
+  if(bad.length)return toast('Already has an event at this time: '+bad.join(', '),'err');
+  ids.forEach(id=>EV.forEach(x=>S.events.push({id:nid(),cameraId:id,status:'OFFLINE',start:x.s,end:x.e,reason:g('r'),remarks:g('m'),reportedBy:U().name,createdAt:now(),updatedAt:now()})));
+  save();closeM();toast(ids.length*EV.length+' entries saved ('+ids.length+' camera × '+EV.length+' event)','ok');R()},'Save Entry','max-w-2xl');
  else modal('Bulk Restore / Mark Online',pick+F('Time restored (back ON)',dtf('s',now())),()=>{
   const ids=[...document.querySelectorAll('.bc:checked')].map(x=>x.value);if(!ids.length)return toast('Select at least one camera','err');
   const t=toMs(g('sd'),g('st'));if(isNaN(t))return toast('Invalid date/time (HH:mm, 24h)','err');if(t>now())return toast('Time cannot be in the future','err');
