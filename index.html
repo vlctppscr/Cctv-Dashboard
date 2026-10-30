@@ -145,6 +145,18 @@ html:not(.tb){--sbt:#050d1f;--sbh:#1d3f91;--sbh2:#2f5fd0}
 @supports not selector(::-webkit-scrollbar){html{scrollbar-color:var(--sbh) var(--sbt);scrollbar-width:thin}}
 html.nosb,html.nosb *{scrollbar-width:none;-ms-overflow-style:none}
 html.nosb::-webkit-scrollbar,html.nosb *::-webkit-scrollbar{width:0!important;height:0!important;display:none}
+.ddp{cursor:pointer;transition:.15s}.ddp:hover{filter:brightness(1.25)}
+.cal-d{height:2.1rem;border-radius:.5rem;font-size:.8rem;font-family:ui-monospace,monospace;position:relative;border:1px solid transparent;background:rgba(255,255,255,.03);color:#e2e8f0}
+.cal-d:hover:not(:disabled){border-color:#38bdf8;background:rgba(56,189,248,.14)}
+.cal-d:disabled{opacity:.25;cursor:not-allowed}
+.cal-d.sel{background:#0ea5e9;color:#fff;border-color:#7dd3fc;font-weight:700}
+.cal-d.tdy{border-color:#34d399}
+.cal-d i{position:absolute;bottom:3px;left:50%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#f43f5e}
+.cal-d.sel i{background:#fff}
+.cal-k{border:1px solid rgba(148,163,184,.25);border-radius:.6rem;padding:.5rem .7rem;background:rgba(255,255,255,.03)}
+.cal-k b{display:block;font-size:1.1rem;font-family:ui-monospace,monospace}
+.cal-k span{font-size:.75rem;letter-spacing:.01em;color:#94a3b8}
+.cal-t th{position:sticky;top:0;z-index:2;background:#05070d}
 .ddp{display:inline-flex;align-items:center;gap:.35rem;padding:.38rem .7rem;border-radius:.55rem;border:1px solid #38bdf8;background:rgba(56,189,248,.1);color:#bae6fd;font-size:.8rem;font-weight:700;font-family:ui-monospace,monospace;white-space:nowrap}
 .ddp b{font-family:inherit;color:#6ee7b7;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase}
 html.tb .ddp{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.22)}
@@ -409,7 +421,7 @@ html.dlock #main{overflow:hidden}
 <header class="noprint sticky top-0 z-30 card !rounded-none !border-x-0 !border-t-0 px-5 py-3 flex flex-wrap items-center gap-3">
  <button id="mb" class="btn" onclick="sbT()" aria-label="Menu"><i data-lucide="menu" class="w-5 h-5"></i></button>
  <div><div class="font-bold text-lg">CCTV Uptime Tracker</div><div class="hlk text-xs text-slate-400 flex gap-3"><a href="#" onclick="go('live');return false">Live Monitoring</a>|<a href="#" onclick="go('dash');return false">Status</a>|<a href="#" onclick="go('daily');return false">Reports</a></div></div>
- <div class="flex items-center gap-2"><button id="dpv" class="btn" onclick="dnav(-1)"><i data-lucide="chevron-left" class="w-4 h-4"></i>Prev</button><button id="dnx" class="btn" onclick="dnav(1)">Next<i data-lucide="chevron-right" class="w-4 h-4"></i></button><span id="dd" class="ddp"></span></div>
+ <div class="flex items-center gap-2"><button id="dpv" class="btn" onclick="dnav(-1)"><i data-lucide="chevron-left" class="w-4 h-4"></i>Prev</button><button id="dnx" class="btn" onclick="dnav(1)">Next<i data-lucide="chevron-right" class="w-4 h-4"></i></button><button type="button" id="dd" class="ddp" onclick="calOpen()" title="Open calendar" aria-label="Open calendar"></button></div>
  <div class="ml-auto flex flex-wrap items-center gap-2"><span id="sync" class="px-2 py-1 rounded border text-[11px] text-slate-400 border-slate-600">● Connecting…</span><button id="fsb" class="btn !px-2 !py-1.5" onclick="fsT()" title="Full screen" aria-label="Full screen"><i data-lucide="maximize" class="w-4 h-4"></i></button><div class="text-right px-2"><div id="clk" class="font-mono text-sky-300 text-sm"></div></div><select id="usr" class="in" onchange="S.uid=+this.value;save();R()"></select></div>
 </header>
 <main id="main" class="p-5"></main></div></div>
@@ -697,6 +709,87 @@ function dayModal(cid,day){const c=camOf(cid);if(!c)return;const d=V.m+'-'+pad(d
  <div class="px-4 pb-1">${ticks(s,e,1)}${tl(c,st,s,e)}<div class="text-[11px] text-slate-400 mt-1">${cap(st)}</div></div>
  <div class="flex gap-5 text-xs text-slate-300 mt-3"><span><i class="seg on inline-block w-4 h-3 rounded align-middle"></i> Online</span><span><i class="seg off inline-block w-4 h-3 rounded align-middle"></i> Offline</span><span><i class="seg nd inline-block w-4 h-3 rounded align-middle"></i> No Data</span></div>
  ${evs.length?`<div class="mt-4 overflow-x-auto"><table class="w-full"><thead><tr><th>Offline</th><th>Online</th><th>Duration</th><th>Reason</th></tr></thead><tbody>${evs.map(x=>`<tr><td class="font-mono">${fdD(x.start)}</td><td class="font-mono">${x.end?fdD(x.end):'Currently Offline'}</td><td class="font-mono">${hms(evEnd(x)-x.start)}</td><td>${esc(x.reason)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="mt-4 text-sm text-emerald-300">No downtime on this day.</div>'}</div></div>`;lucide.createIcons()}
+
+/* ===== Calendar popup with full-day details ===== */
+let CAL={m:'',sel:''};
+function calOpen(){CAL.sel=clampD(V.d);CAL.m=CAL.sel.slice(0,7);
+ $('#modal').innerHTML=`<div class="fixed inset-0 z-50 bg-black"><div class="card !rounded-none !border-0 w-full h-full p-5 flex flex-col overflow-hidden" style="background:#05070d"><div class="grid lg:grid-cols-[24rem_1fr] gap-x-6 gap-y-2 items-center mb-4 shrink-0"><h3 class="font-semibold text-xl flex items-center gap-2"><i data-lucide="calendar"></i>Select Date</h3><div class="flex items-center justify-between gap-3"><div id="calHead"></div><button class="btn" onclick="closeM()" title="Close"><i data-lucide="x" class="w-4 h-4"></i>Close</button></div></div><div id="calBody" class="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden"></div></div></div>`;calRender()}
+function calMove(k){const[y,m]=CAL.m.split('-').map(Number),d=new Date(Date.UTC(y,m-1+k,1)).toISOString().slice(0,7);if(d<START_D.slice(0,7)||d>fd(now()).slice(0,7))return;CAL.m=d;calRender()}
+function calPick(d){const t=Date.now();if(CAL.ld===d&&t-CAL.lt<500){CAL.sel=d;calApply();return}CAL.ld=d;CAL.lt=t;CAL.sel=d;CAL.m=d.slice(0,7);calRender()}
+function calApply(){V.d=CAL.sel;V.rg='day';DXSEEN=0;closeM();R()}
+function calRender(){
+ const MN=['January','February','March','April','May','June','July','August','September','October','November','December'],td=fd(now());
+ const[y,mo]=CAL.m.split('-').map(Number),first=new Date(Date.UTC(y,mo-1,1)).getUTCDay(),dim=new Date(Date.UTC(y,mo,0)).getUTCDate();
+ const hasEv=d=>{const[a,b]=W(d,'ALL');return S.events.some(x=>x.start<b&&evEnd(x)>a&&evEnd(x)>START_MS&&S.cams.some(c=>c.id===x.cameraId))};
+ let cells='';for(let i=0;i<first;i++)cells+='<div></div>';
+ for(let d=1;d<=dim;d++){const ds=CAL.m+'-'+pad(d),dis=ds<START_D||ds>td;cells+=`<button type="button" class="cal-d ${ds===CAL.sel?'sel':''} ${ds===td?'tdy':''}" ${dis?'disabled':''} onclick="calPick('${ds}')">${d}${!dis&&hasEv(ds)?'<i></i>':''}</button>`}
+ const pm=CAL.m<=START_D.slice(0,7),nm=CAL.m>=td.slice(0,7);
+ const d=CAL.sel,[s,e]=W(d,'ALL'),act=S.cams.filter(c=>c.active),T=act.map(c=>({c,st:calc(c,s,e)}));
+ const up=sum(T,'on'),dn=sum(T,'off'),per=sum(T,'per'),av=per?up/per*100:null,nEv=sum(T,'n'),hit=T.filter(x=>x.st.n>0).length;
+ const shift=['A','B','C'].map(k=>{const[a,b]=W(d,k),TT2=act.map(c=>calc(c,a,b)),pp=TT2.reduce((t,x)=>t+x.per,0),oo=TT2.reduce((t,x)=>t+x.off,0),nn=TT2.reduce((t,x)=>t+x.n,0);return{k,lab:SH[k][2],av:pp?(pp-oo)/pp*100:null,off:oo,n:nn,nd:pp===0}});
+ const RS=reasonStats(act,s,e),rtot=RS.T||1;
+ const evs=S.events.filter(x=>x.start<e&&evEnd(x)>s&&evEnd(x)>START_MS&&camOf(x.cameraId)).sort((a,b)=>a.start-b.start);
+ const kp=(l,v,c)=>`<div class="cal-k"><span>${l}</span><b style="color:${c||'#e2e8f0'}">${v}</b></div>`;
+ const col=a=>a===null?'#94a3b8':a>=99?'#34d399':a>=95?'#fbbf24':'#f43f5e';
+ $('#calHead').innerHTML=`<div class="font-semibold text-lg leading-tight">${dmy(d)}${d===td?' <span class="text-emerald-300 text-xs font-bold">TODAY</span>':''}</div><div class="text-[11px] text-slate-400">Full day (A+B+C) · ${SH.ALL[2]}${d===td?' · data so far':''}</div>`;
+ $('#calBody').innerHTML=`<div class="grid lg:grid-cols-[24rem_1fr] gap-6 lg:h-full">
+ <div class="min-w-0 lg:h-full lg:min-h-0 lg:overflow-y-auto pr-1"><div class="flex items-center justify-between mb-2"><button class="btn" ${pm?'disabled':''} onclick="calMove(-1)"><i data-lucide="chevron-left" class="w-4 h-4"></i></button><b class="text-sm">${MN[mo-1]} ${y}</b><button class="btn" ${nm?'disabled':''} onclick="calMove(1)"><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div>
+ <div class="grid grid-cols-7 gap-1 text-center text-[10px] text-slate-400 mb-1">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(x=>`<div>${x}</div>`).join('')}</div>
+ <div class="grid grid-cols-7 gap-1.5">${cells}</div>
+ <div class="text-[10px] text-slate-400 mt-2"><span style="color:#f43f5e">●</span> downtime event on that day · <span style="color:#34d399">▢</span> Today</div>
+ <div class="flex gap-2 mt-3 flex-wrap"><button class="btn pri" onclick="calApply()"><i data-lucide="check" class="w-4 h-4"></i>Open in Dashboard</button><button class="btn" onclick="calPick('${td}')" title="Double-click to open Today in the Dashboard">Today</button><button class="btn" style="border-color:#34d399;color:#6ee7b7" onclick="calExport()"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i>Export Excel</button></div>${RS.a.length?`<div class="text-sm font-semibold mb-2 mt-5">Reason Breakdown</div><div class="space-y-1.5 mb-3">${RS.a.map(([r,v])=>`<div class="flex items-center gap-2 text-xs"><span class="w-28 shrink-0 truncate">${esc(r)}</span><span class="flex-1 h-2 rounded bg-white/10 overflow-hidden"><i class="block h-full" style="width:${(v/rtot*100).toFixed(1)}%;background:#f43f5e"></i></span><span class="font-mono w-[4.5rem] text-right">${hms(v)}</span></div>`).join('')}</div>`:''}</div>
+ <div class="min-w-0 flex flex-col lg:h-full lg:min-h-0"><div class="shrink-0">
+ <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">${kp('Active Cameras',act.length)}${kp('Fleet Uptime',avf(av),col(av))}${kp('Total Uptime',hms(up),'#34d399')}${kp('Total Downtime',hms(dn),dn?'#f43f5e':'#34d399')}${kp('Downtime Events',nEv,nEv?'#fbbf24':'#34d399')}${kp('Cameras Affected',hit+' / '+act.length,hit?'#fbbf24':'#34d399')}${kp('Online (Full Day)',act.length-hit,'#34d399')}${kp('Top Reason',RS.a[0]?esc(RS.a[0][0]):'—')}</div>
+ <div class="text-[11px] text-slate-400 mb-1">Shift-wise availability</div><div class="grid grid-cols-3 gap-2 mb-3">${shift.map(x=>`<div class="cal-k"><span>Shift ${x.k} · ${x.lab}</span><b style="color:${col(x.av)}">${x.nd?'No data':avf(x.av)}</b><span style="text-transform:none">${x.n} event · off ${hms(x.off)}</span></div>`).join('')}</div>
+ 
+ </div><div class="flex flex-col lg:flex-1 lg:min-h-0"><div class="text-[11px] text-slate-400 mb-1 shrink-0">Events (${evs.length})</div>
+ ${evs.length?`<div class="overflow-auto lg:flex-1 lg:min-h-0 cal-t"><table class="w-full text-xs"><thead><tr><th>Resource</th><th>Camera</th><th>UN</th><th>IP</th><th>Off</th><th>On</th><th>Duration</th><th>Reason</th><th>Reported By</th></tr></thead><tbody>${evs.map(x=>{const c=camOf(x.cameraId);return`<tr><td>${esc(rn(c))}</td><td>${esc(c.loc)}</td><td class="font-mono">${esc(c.un)}</td><td class="font-mono">${esc(c.ip||'')}</td><td class="font-mono">${fdD(x.start)}</td><td class="font-mono ${x.end?'':'text-rose-300'}">${x.end?fdD(x.end):'Currently Offline'}</td><td class="font-mono">${hms(evEnd(x)-x.start)}</td><td>${esc(x.reason)}</td><td>${esc(x.reportedBy)}</td></tr>`}).join('')}</tbody></table></div>`:'<div class="text-sm text-emerald-300">No downtime on this day — all cameras stayed online.</div>'}
+ </div></div></div>`;lucide.createIcons()}
+
+/* v27: Calendar "Export Excel" - ONE sheet with every detail, same look as the other Excel reports */
+async function calExport(){
+ if(!window.ExcelJS)return toast('Excel library failed to load – check your internet connection and try again','err');
+ try{
+ const d=CAL.sel,[s,e]=W(d,'ALL'),act=S.cams.filter(c=>c.active),T=act.map(c=>({c,st:calc(c,s,e)}));
+ const up=sum(T,'on'),dn=sum(T,'off'),per=sum(T,'per'),av=per?up/per*100:null,nEv=sum(T,'n'),hit=T.filter(x=>x.st.n>0).length;
+ const RS=reasonStats(act,s,e),evs=S.events.filter(x=>x.start<e&&evEnd(x)>s&&evEnd(x)>START_MS&&camOf(x.cameraId)).sort((a,b)=>a.start-b.start);
+ const NV='FF0C1C40',BL='FF1D3F91',WH='FFFFFFFF',fill=a=>({type:'pattern',pattern:'solid',fgColor:{argb:a}}),bd={style:'thin',color:{argb:'FFB8C4DA'}},B={top:bd,left:bd,bottom:bd,right:bd};
+ const wb=new ExcelJS.Workbook();wb.creator=U().name;wb.created=new Date();
+ const N=9,ws=wb.addWorksheet('Date Report '+dmy(d),{properties:{tabColor:{argb:BL}},pageSetup:{paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.4,right:.4,top:.5,bottom:.5,header:.2,footer:.2}}});
+ ws.columns=[24,24,14,17,19,19,13,22,22].map(w=>({width:w}));
+ const band=(r,t,sz,bold,bg,fc,h)=>{ws.mergeCells(r,1,r,N);const c=ws.getCell(r,1);c.value=t;c.font={name:'Calibri',size:sz,bold,color:{argb:fc}};c.fill=fill(bg);c.alignment={vertical:'middle',horizontal:'center'};ws.getRow(r).height=h};
+ band(1,S.plant,16,true,NV,WH,30);band(2,'CCTV Daily Report · Date '+dmy(d)+(d===fd(now())?' (Today · data so far)':'')+' · Full day (A+B+C) '+SH.ALL[2],11,true,BL,WH,22);band(3,'Generated: '+fdD(now())+' by '+U().name+' · CONFIDENTIAL – SECURITY DEPARTMENT',9,false,'FFE8EEF9','FF334155',18);
+ const GR='FF15803D',RD='FFBE123C',AM='FFB45309',col=a=>a===null?'FF475569':a>=99?GR:a>=95?AM:RD;
+ const title=(r,t)=>{ws.mergeCells(r,1,r,N);const c=ws.getCell(r,1);c.value=t;c.font={name:'Calibri',size:12,bold:true,color:{argb:NV}};c.alignment={vertical:'middle'};ws.getRow(r).height=22};
+ const hdr=(r,arr)=>{arr.forEach((h,i)=>{const x=ws.getCell(r,i+1);x.value=h;x.font={bold:true,color:{argb:WH},size:10,name:'Calibri'};x.fill=fill(BL);x.alignment={vertical:'middle',horizontal:'center',wrapText:true};x.border=B});ws.getRow(r).height=30};
+ /* KPI boxes: 3 rows x 3 boxes (each box = 3 columns) */
+ const K=[['Date',dmy(d),NV],['Active Cameras',act.length,NV],['Fleet Uptime',avf(av),col(av)],['Total Uptime',hms(up),GR],['Total Downtime',hms(dn),dn?RD:GR],['Downtime Events',nEv,nEv?AM:GR],['Cameras Affected',hit+' / '+act.length,hit?AM:GR],['Online (Full Day)',act.length-hit,GR],['Top Reason',RS.a[0]?RS.a[0][0]:'—',NV]];
+ let r=5;
+ for(let row=0;row<3;row++){for(let i=0;i<3;i++){const k=K[row*3+i],c0=i*3+1,c1=c0+2;ws.mergeCells(r,c0,r,c1);ws.mergeCells(r+1,c0,r+1,c1);for(let c=c0;c<=c1;c++){ws.getCell(r,c).border=B;ws.getCell(r+1,c).border=B}
+  const a=ws.getCell(r,c0),b=ws.getCell(r+1,c0);a.value=k[0];a.font={size:9,color:{argb:'FF475569'},name:'Calibri'};a.fill=fill('FFF1F5F9');a.alignment={horizontal:'center',vertical:'middle'};
+  b.value=k[1];b.font={size:15,bold:true,color:{argb:k[2]},name:'Calibri'};b.fill=fill('FFF8FAFC');b.alignment={horizontal:'center',vertical:'middle'}}
+  ws.getRow(r).height=18;ws.getRow(r+1).height=28;r+=2}
+ r++;
+ const cell=(row,ci,v,i,al,ind)=>{const c=row.getCell(ci);c.value=v;c.border=B;c.alignment={horizontal:al,vertical:'middle',indent:ind||0};c.font={name:'Calibri',size:10,color:{argb:'FF0F172A'}};c.fill=fill(i%2?'FFFFFFFF':'FFF1F5F9');return c};
+ /* Shift-wise */
+ title(r++,'Shift-wise Availability');hdr(r++,['Shift','Time','Availability','Events','Off Duration']);
+ ['A','B','C'].forEach((k,i)=>{const[a,b]=W(d,k),L=act.map(c=>calc(c,a,b)),pp=L.reduce((t,x)=>t+x.per,0),oo=L.reduce((t,x)=>t+x.off,0),nn=L.reduce((t,x)=>t+x.n,0),v=pp?(pp-oo)/pp*100:null,row=ws.getRow(r++);
+  cell(row,1,'Shift '+k,i,'center');cell(row,2,SH[k][2],i,'center');const pc=cell(row,3,v===null?'No data':v/100,i,'center');cell(row,4,nn,i,'center');cell(row,5,hms(oo),i,'center');
+  if(v!==null){pc.numFmt=Math.abs(v-Math.round(v))<0.005?'0%':'0.00%';pc.font={name:'Calibri',size:10,bold:true,color:{argb:col(v)}}};row.height=21});
+ r++;
+ /* Reason breakdown */
+ title(r++,'Reason Breakdown');hdr(r++,['Reason','Downtime (hh:mm:ss)','Share of Downtime']);
+ if(!RS.a.length){ws.mergeCells(r,1,r,N);ws.getCell(r,1).value='No downtime on this day.';ws.getCell(r,1).font={name:'Calibri',size:10,color:{argb:GR}};r++}
+ RS.a.forEach(([n,v],i)=>{const row=ws.getRow(r++);cell(row,1,n,i,'left',1);cell(row,2,hms(v),i,'center');const c=cell(row,3,RS.T?v/RS.T:0,i,'center');c.numFmt='0.00%';row.height=21});
+ r++;
+ /* Events */
+ title(r++,'Events ('+evs.length+')');hdr(r++,['Resource','Camera','UN','Device IP','Off','On','Duration','Reason','Reported By']);
+ if(!evs.length){ws.mergeCells(r,1,r,N);ws.getCell(r,1).value='No downtime on this day — all cameras stayed online.';ws.getCell(r,1).font={name:'Calibri',size:10,color:{argb:GR}};r++}
+ evs.forEach((x,i)=>{const c=camOf(x.cameraId),row=ws.getRow(r++),vals=[rn(c),c.loc,/^[1-9]\d{0,14}$/.test(String(c.un))?Number(c.un):c.un,c.ip||'',fdD(x.start),x.end?fdD(x.end):'Currently Offline',hms(evEnd(x)-x.start),x.reason,x.reportedBy];
+  vals.forEach((v,ci)=>{const ctr=[2,4,5,6].includes(ci),z=cell(row,ci+1,v,i,ctr?'center':'left',ctr?0:1);if(ci===2)z.numFmt='0';if(ci===5&&!x.end)z.font={name:'Calibri',size:10,bold:true,color:{argb:RD}}});row.height=21});
+ ws.views=[{showGridLines:false}];
+ const buf=await wb.xlsx.writeBuffer(),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download='CCTV-Date-Report-'+d+'.xlsx';document.body.append(a);a.click();a.remove();toast('Excel exported','ok')
+ }catch(err){console.error(err);toast('Excel export failed: '+err.message,'err')}}
 let LC={t:0,el:null};
 let DG={t:0,k:''};
 function dgoRun(k,a){if(k==='off')return offGo(a);if(k==='cams')return go('cams');if(k==='reason'){V.res='ALL';V.cam='ALL';V.hq='';V.hs='ALL';V.hd='';V.sh='ALL';V.hr=a;V.hall=true;V.hp=1;return go('hist')}
