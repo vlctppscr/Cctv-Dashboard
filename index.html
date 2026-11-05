@@ -192,6 +192,18 @@ th{padding:.45rem .5rem;font-size:.68rem}td{padding:.4rem .5rem;font-size:.74rem
 }
 @media (max-width:520px){#dxk{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 
+/* ===== v29 ===== */
+.dcn{color:#fcd34d}html.tm .dcn{color:#fff}
+.cal-d{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.cal-d.ms{background:rgba(14,165,233,.45);border-color:#7dd3fc;color:#fff}
+.dxs [data-dgo="off"]{user-select:none;-webkit-user-select:none}
+/* ===== v28: range picker ===== */
+.dxrb{cursor:pointer;padding:.3rem .7rem;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);transition:background .15s,border-color .15s}
+.dxrb:hover{background:rgba(255,255,255,.1);border-color:#38bdf8}
+.rpg{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;user-select:none;-webkit-user-select:none;touch-action:none}
+.rpg .cal-d{width:100%;height:2.6rem;cursor:pointer}
+.cal-d.rng{background:rgba(14,165,233,.28);border-color:rgba(125,211,252,.45);color:#fff}
+.rpw{font-size:.72rem;text-align:center;color:#94a3b8;font-weight:700}
 /* ===== v24: master range selector ===== */
 .dxsel{display:inline-flex;gap:2px;padding:3px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05)}
 .dxsel button{padding:.28rem .75rem;border-radius:9px;font-size:.76rem;font-weight:700;color:#a9b6cd;transition:background .15s}
@@ -458,7 +470,7 @@ const V={p:'dash',d:fd(now()),sh:curShift(),res:'ALL',cam:'ALL',m:fd(now()).slic
 const U=()=>S.users.find(u=>u.id==S.uid),can=()=>U().role!=='Viewer',adm=()=>U().role==='Admin';
 const resOf=c=>S.resources.find(r=>r.id===c.resId),rn=c=>resOf(c).name,camOf=id=>S.cams.find(c=>c.id===id),openEv=id=>S.events.find(x=>x.cameraId===id&&!x.end);
 const DSEL=new Set(),dsc=()=>[...DSEL].filter(id=>openEv(id));
-let DLP={t:null,x:0,y:0,fired:false};
+let DLP={t:null,x:0,y:0,px:0,py:0,fired:false,drag:false,an:'',cur:'',mode:true,base:null,iv:0,sw:false};
 function dselUpd(){document.querySelectorAll('[data-dgo="off"]').forEach(el=>el.classList.toggle('dsel',DSEL.has(el.dataset.a)));const n=dsc().length,b=$('#dron');if(b)b.innerHTML='<i data-lucide="power" class="w-3 h-3"></i> Mark Online'+(n?' <b>('+n+')</b>':'');if(window.lucide)lucide.createIcons()}
 function dselTog(id){if(DSEL.has(id))DSEL.delete(id);else DSEL.add(id);dselUpd()}
 function dRestore(){if(!can())return toast('Viewer cannot change status','err');const ids=dsc();if(!ids.length)return toast('Long press a camera in the list to select it, then tap again to select more','warn');
@@ -467,9 +479,18 @@ function dRestore(){if(!can())return toast('Viewer cannot change status','err');
   const t=toMs(g('sd'),g('st'));if(isNaN(t))return toast('Invalid date/time (HH:mm, 24h)','err');if(t>now())return toast('Time cannot be in the future','err');
   const cur=ids.filter(id=>openEv(id)),bad=cur.filter(id=>t<=openEv(id).start);if(bad.length)return toast('Restore time must be after the OFF start time (UN): '+bad.map(id=>camOf(id).un).join(', '),'err');
   cur.forEach(id=>{const o=openEv(id);o.end=t;o.updatedAt=now();if(g('m'))o.remarks=(o.remarks?o.remarks+' | ':'')+'Restore: '+g('m');DSEL.delete(id)});save();closeM();toast(cur.length+' cameras marked ONLINE','ok');R()},'Restore Selected','max-w-lg')}
-document.addEventListener('pointerdown',e=>{const el=e.target.closest('[data-dgo="off"]');if(!el||(e.pointerType==='mouse'&&e.button!==0))return;DLP.fired=false;DLP.x=e.clientX;DLP.y=e.clientY;clearTimeout(DLP.t);DLP.t=setTimeout(()=>{DLP.fired=true;dselTog(el.dataset.a);if(navigator.vibrate)try{navigator.vibrate(30)}catch(_){}} ,500)});
+document.addEventListener('pointerdown',e=>{const el=e.target.closest('[data-dgo="off"]');if(!el||(e.pointerType==='mouse'&&e.button!==0))return;DLP.fired=false;DLP.drag=false;DLP.x=e.clientX;DLP.y=e.clientY;DLP.px=e.clientX;DLP.py=e.clientY;clearTimeout(DLP.t);DLP.t=setTimeout(()=>{DLP.fired=true;dselTog(el.dataset.a);DLP.drag=true;DLP.an=el.dataset.a;DLP.cur=el.dataset.a;DLP.mode=DSEL.has(el.dataset.a);DLP.base=new Set(DSEL);clearInterval(DLP.iv);DLP.iv=setInterval(dlpTick,40);if(navigator.vibrate)try{navigator.vibrate(30)}catch(_){}},500)});
+function dlpTick(){if(!DLP.drag)return;const first=document.querySelector('[data-dgo="off"]'),sc=first&&first.closest('.dxs');let r=null;
+ if(sc){r=sc.getBoundingClientRect();if(DLP.py<r.top+22)sc.scrollTop-=12;else if(DLP.py>r.bottom-22)sc.scrollTop+=12}
+ const el=document.elementFromPoint(DLP.px,DLP.py),row=el&&el.closest?el.closest('[data-dgo="off"]'):null,rows=[...document.querySelectorAll('[data-dgo="off"]')].map(x=>x.dataset.a);
+ if(row)DLP.cur=row.dataset.a;else if(r&&rows.length){if(DLP.py<r.top)DLP.cur=rows[0];else if(DLP.py>r.bottom)DLP.cur=rows[rows.length-1]}
+ const i=rows.indexOf(DLP.an),j=rows.indexOf(DLP.cur);if(i<0||j<0)return;
+ const lo=Math.min(i,j),hi=Math.max(i,j);DSEL.clear();DLP.base.forEach(x=>DSEL.add(x));for(let k=lo;k<=hi;k++){if(DLP.mode)DSEL.add(rows[k]);else DSEL.delete(rows[k])}dselUpd()}
+['pointerup','pointercancel'].forEach(ev=>document.addEventListener(ev,()=>{if(DLP.drag){DLP.drag=false;clearInterval(DLP.iv);DLP.sw=true;setTimeout(()=>{DLP.sw=false},80)}}));
+document.addEventListener('click',e=>{if(DLP.sw){DLP.sw=false;e.stopImmediatePropagation();e.preventDefault()}},true);
+document.addEventListener('touchmove',e=>{if(DLP.drag)e.preventDefault()},{passive:false});
 ['pointerup','pointercancel','pointerleave'].forEach(ev=>document.addEventListener(ev,()=>clearTimeout(DLP.t)));
-document.addEventListener('pointermove',e=>{if(DLP.t&&(Math.abs(e.clientX-DLP.x)>8||Math.abs(e.clientY-DLP.y)>8))clearTimeout(DLP.t)});
+document.addEventListener('pointermove',e=>{if(DLP.drag){DLP.px=e.clientX;DLP.py=e.clientY;dlpTick();return}if(DLP.t&&(Math.abs(e.clientX-DLP.x)>8||Math.abs(e.clientY-DLP.y)>8))clearTimeout(DLP.t)});
 document.addEventListener('contextmenu',e=>{if(e.target.closest('[data-dgo="off"]'))e.preventDefault()});
 
 V.q='';let TQT;const tqs=(v,k='q',id='tq')=>{clearTimeout(TQT);V[k]=v.trim().toLowerCase();R();const i=$('#'+id);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},tqd=(v,k,id)=>{clearTimeout(TQT);TQT=setTimeout(()=>tqs(v,k,id),500)};V.mq='';V.hq='';V.hall=false;
@@ -714,19 +735,61 @@ function dayModal(cid,day){const c=camOf(cid);if(!c)return;const d=V.m+'-'+pad(d
  <div class="flex gap-5 text-xs text-slate-300 mt-3"><span><i class="seg on inline-block w-4 h-3 rounded align-middle"></i> Online</span><span><i class="seg off inline-block w-4 h-3 rounded align-middle"></i> Offline</span><span><i class="seg nd inline-block w-4 h-3 rounded align-middle"></i> No Data</span></div>
  ${evs.length?`<div class="mt-4 overflow-x-auto"><table class="w-full"><thead><tr><th>Offline</th><th>Online</th><th>Duration</th><th>Reason</th></tr></thead><tbody>${evs.map(x=>`<tr><td class="font-mono">${fdD(x.start)}</td><td class="font-mono">${x.end?fdD(x.end):'Currently Offline'}</td><td class="font-mono">${hms(evEnd(x)-x.start)}</td><td>${esc(x.reason)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="mt-4 text-sm text-emerald-300">No downtime on this day.</div>'}</div></div>`;lucide.createIcons()}
 
+/* ===== v28: date-range picker (drag to select, no red dots) ===== */
+let RP={m:'',a:'',b:'',an:'',drag:false,mv:false,pend:false};
+function rpOpen(){const R0=dxRange();RP={m:R0.end.slice(0,7),a:R0.a,b:R0.end,an:'',drag:false,mv:false,pend:false};
+ $('#modal').innerHTML=`<div class="fixed inset-0 z-50 flex items-center justify-center p-3" style="background:rgba(0,0,0,.75)" onclick="if(event.target===this)closeM()"><div class="card w-full p-5" style="max-width:30rem;background:#05070d"><div class="flex items-center justify-between mb-3"><h3 class="font-semibold text-xl flex items-center gap-2"><i data-lucide="calendar"></i>Select Date</h3><button class="btn" onclick="closeM()"><i data-lucide="x" class="w-4 h-4"></i>Close</button></div><div id="rpBody"></div></div></div>`;rpRender();lucide.createIcons()}
+function rpCls(ds){const a=RP.a,b=RP.b;return'cal-d'+((ds===a||ds===b)?' sel':(ds>a&&ds<b)?' rng':'')+(ds===fd(now())?' tdy':'')}
+function rpHint(){return RP.pend?'Start '+dmy(RP.an)+' \u2014 now click the end date (or Apply for one day)':'Drag over dates to select a range, or click start date then end date'}
+function rpRender(){const td=fd(now()),[y,mo]=RP.m.split('-').map(Number),first=new Date(Date.UTC(y,mo-1,1)).getUTCDay(),dim=new Date(Date.UTC(y,mo,0)).getUTCDate();
+ let c='';for(let i=0;i<first;i++)c+='<div></div>';
+ for(let d=1;d<=dim;d++){const ds=RP.m+'-'+pad(d),dis=ds<START_D||ds>td;c+=`<button type="button" data-d="${ds}" class="${rpCls(ds)}" ${dis?'disabled':''} onpointerdown="rpDown(event,'${ds}')">${d}</button>`}
+ const pm=RP.m<=START_D.slice(0,7),nm=RP.m>=td.slice(0,7);
+ $('#rpBody').innerHTML=`<div class="flex items-center justify-between mb-3"><button class="btn" ${pm?'disabled':''} onclick="rpMove(-1)"><i data-lucide="chevron-left" class="w-4 h-4"></i></button><b class="text-base">${MNF[mo-1]} ${y}</b><button class="btn" ${nm?'disabled':''} onclick="rpMove(1)"><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div><div class="rpg mb-1">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(x=>`<div class="rpw">${x}</div>`).join('')}</div><div class="rpg">${c}</div>`;lucide.createIcons()}
+function rpUpd(){document.querySelectorAll('#rpBody [data-d]').forEach(el=>el.className=rpCls(el.dataset.d))}
+function rpMove(k){const[y,m]=RP.m.split('-').map(Number),d=new Date(Date.UTC(y,m-1+k,1)).toISOString().slice(0,7);if(d<START_D.slice(0,7)||d>fd(now()).slice(0,7))return;RP.m=d;rpRender()}
+function rpSet(d){const x=RP.an||d;RP.a=d<x?d:x;RP.b=d<x?x:d}
+function rpDown(e,d){if(e.button>0)return;e.preventDefault();
+ if(RP.pend&&RP.an){rpSet(d);rpApply();return}
+ RP.an=d;RP.a=d;RP.b=d;RP.drag=true;RP.mv=false;rpUpd()}
+function rpApply(){let a=RP.a,b=RP.b;if(!a)return;if(a>b){const t=a;a=b;b=t}
+ if(a===b){V.rg='day';V.d=a}else{V.rg='custom';V.rset=null;V.ra=a;V.rb=b;V.d=b}
+ DXSEEN=0;closeM();R()}
+document.addEventListener('pointermove',e=>{if(!RP.drag)return;const el=document.elementFromPoint(e.clientX,e.clientY),b=el&&el.closest?el.closest('[data-d]'):null;if(!b||b.disabled)return;const d=b.dataset.d;if(d!==RP.an)RP.mv=true;rpSet(d);rpUpd()});
+document.addEventListener('pointerup',()=>{if(!RP.drag)return;RP.drag=false;if(RP.mv)rpApply();else{RP.pend=true;rpUpd()}});
+document.addEventListener('pointercancel',()=>{RP.drag=false});
+
 /* ===== Calendar popup with full-day details ===== */
-let CAL={m:'',sel:''};
-function calOpen(){CAL.sel=clampD(V.d);CAL.m=CAL.sel.slice(0,7);
+let CAL={m:'',sel:'',set:new Set(),t:null,fired:false,drag:false,moved:false,pd:'',an:'',base:null,x:0,y:0};
+function calOpen(){CAL.set=new Set();CAL.sel=clampD(V.d);CAL.m=CAL.sel.slice(0,7);
  $('#modal').innerHTML=`<div class="fixed inset-0 z-50 bg-black"><div class="card !rounded-none !border-0 w-full h-full p-5 flex flex-col overflow-hidden" style="background:#05070d"><div class="grid lg:grid-cols-[24rem_1fr] gap-x-6 gap-y-2 items-center mb-4 shrink-0"><h3 class="font-semibold text-xl flex items-center gap-2"><i data-lucide="calendar"></i>Select Date</h3><div class="flex items-center justify-between gap-3"><div id="calHead"></div><button class="btn" onclick="closeM()" title="Close"><i data-lucide="x" class="w-4 h-4"></i>Close</button></div></div><div id="calBody" class="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden"></div></div></div>`;calRender()}
 function calMove(k){const[y,m]=CAL.m.split('-').map(Number),d=new Date(Date.UTC(y,m-1+k,1)).toISOString().slice(0,7);if(d<START_D.slice(0,7)||d>fd(now()).slice(0,7))return;CAL.m=d;calRender()}
 function calPick(d){const t=Date.now();if(CAL.ld===d&&t-CAL.lt<500){CAL.sel=d;calApply();return}CAL.ld=d;CAL.lt=t;CAL.sel=d;CAL.m=d.slice(0,7);calRender()}
-function calApply(){V.d=CAL.sel;V.rg='day';DXSEEN=0;closeM();R()}
+function calApply(){const a=[...CAL.set].sort();
+ if(a.length>1){V.rg='custom';V.rset=a;V.ra=a[0];V.rb=a[a.length-1];V.d=a[a.length-1]}
+ else{V.d=a.length?a[0]:CAL.sel;V.rg='day'}
+ DXSEEN=0;closeM();R()}
+/* v29: calendar multi-select (long press = select, click = add/remove, long press + drag = select many) */
+function calRng(x,y){if(x>y){const t=x;x=y;y=t}const r=[];for(let d=x;d<=y;d=addD(d,1))if(d>=START_D&&d<=fd(now()))r.push(d);return r}
+function calUpd(){document.querySelectorAll('#calBody [data-d]').forEach(el=>{el.classList.toggle('ms',CAL.set.has(el.dataset.d));el.classList.toggle('sel',!CAL.set.size&&el.dataset.d===CAL.sel)});const b=$('#calDone');if(b)b.lastChild.textContent='Done'+(CAL.set.size>1?' ('+CAL.set.size+')':'')}
+function calDown(e,d){if(e.pointerType==='mouse'&&e.button!==0)return;CAL.fired=false;CAL.drag=false;CAL.moved=false;CAL.pd=d;CAL.x=e.clientX;CAL.y=e.clientY;clearTimeout(CAL.t);
+ CAL.t=setTimeout(()=>{CAL.fired=true;CAL.drag=true;CAL.an=d;CAL.base=new Set(CAL.set);CAL.set.add(d);CAL.sel=d;calUpd();if(navigator.vibrate)try{navigator.vibrate(30)}catch(_){}},450)}
+document.addEventListener('pointermove',e=>{if(!CAL.pd)return;
+ if(CAL.drag){const el=document.elementFromPoint(e.clientX,e.clientY),b=el&&el.closest?el.closest('#calBody [data-d]'):null;if(!b||b.disabled)return;const d=b.dataset.d;CAL.sel=d;CAL.set=new Set(CAL.base);calRng(CAL.an,d).forEach(x=>CAL.set.add(x));CAL.moved=true;calUpd();return}
+ if(Math.abs(e.clientX-CAL.x)>8||Math.abs(e.clientY-CAL.y)>8){CAL.moved=true;clearTimeout(CAL.t)}});
+document.addEventListener('touchmove',e=>{if(CAL.drag)e.preventDefault()},{passive:false});
+document.addEventListener('pointerup',()=>{if(!CAL.pd)return;clearTimeout(CAL.t);const d=CAL.pd;CAL.pd='';
+ if(CAL.drag){CAL.drag=false;calRender();return}
+ if(CAL.fired||CAL.moved)return;
+ if(CAL.set.size){if(CAL.set.has(d))CAL.set.delete(d);else CAL.set.add(d);CAL.sel=d;calRender();return}
+ calPick(d)});
+document.addEventListener('pointercancel',()=>{clearTimeout(CAL.t);CAL.pd='';CAL.drag=false});
 function calRender(){
  const MN=['January','February','March','April','May','June','July','August','September','October','November','December'],td=fd(now());
  const[y,mo]=CAL.m.split('-').map(Number),first=new Date(Date.UTC(y,mo-1,1)).getUTCDay(),dim=new Date(Date.UTC(y,mo,0)).getUTCDate();
  const hasEv=d=>{const[a,b]=W(d,'ALL');return S.events.some(x=>x.start<b&&evEnd(x)>a&&evEnd(x)>START_MS&&S.cams.some(c=>c.id===x.cameraId))};
  let cells='';for(let i=0;i<first;i++)cells+='<div></div>';
- for(let d=1;d<=dim;d++){const ds=CAL.m+'-'+pad(d),dis=ds<START_D||ds>td;cells+=`<button type="button" class="cal-d ${ds===CAL.sel?'sel':''} ${ds===td?'tdy':''}" ${dis?'disabled':''} onclick="calPick('${ds}')">${d}${!dis&&hasEv(ds)?'<i></i>':''}</button>`}
+ for(let d=1;d<=dim;d++){const ds=CAL.m+'-'+pad(d),dis=ds<START_D||ds>td;cells+=`<button type="button" class="cal-d ${ds===CAL.sel&&!CAL.set.size?'sel':''} ${CAL.set.has(ds)?'ms':''} ${ds===td?'tdy':''}" data-d="${ds}" ${dis?'disabled':''} onpointerdown="calDown(event,'${ds}')" oncontextmenu="return false">${d}${!dis&&hasEv(ds)?'<i></i>':''}</button>`}
  const pm=CAL.m<=START_D.slice(0,7),nm=CAL.m>=td.slice(0,7);
  const d=CAL.sel,[s,e]=W(d,'ALL'),act=S.cams.filter(c=>c.active),T=act.map(c=>({c,st:calc(c,s,e)}));
  const up=sum(T,'on'),dn=sum(T,'off'),per=sum(T,'per'),av=per?up/per*100:null,nEv=sum(T,'n'),hit=T.filter(x=>x.st.n>0).length;
@@ -741,7 +804,7 @@ function calRender(){
  <div class="grid grid-cols-7 gap-1 text-center text-[10px] text-slate-400 mb-1">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(x=>`<div>${x}</div>`).join('')}</div>
  <div class="grid grid-cols-7 gap-1.5">${cells}</div>
  <div class="text-[10px] text-slate-400 mt-2"><span style="color:#f43f5e">●</span> downtime event on that day · <span style="color:#34d399">▢</span> Today</div>
- <div class="flex gap-2 mt-3 flex-wrap"><button class="btn pri" onclick="calApply()"><i data-lucide="check" class="w-4 h-4"></i>Open in Dashboard</button><button class="btn" onclick="calPick('${td}')" title="Double-click to open Today in the Dashboard">Today</button><button class="btn" style="border-color:#34d399;color:#6ee7b7" onclick="calExport()"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i>Export Excel</button></div>${RS.a.length?`<div class="text-sm font-semibold mb-2 mt-5">Reason Breakdown</div><div class="space-y-1.5 mb-3">${RS.a.map(([r,v])=>`<div class="flex items-center gap-2 text-xs"><span class="w-28 shrink-0 truncate">${esc(r)}</span><span class="flex-1 h-2 rounded bg-white/10 overflow-hidden"><i class="block h-full" style="width:${(v/rtot*100).toFixed(1)}%;background:#f43f5e"></i></span><span class="font-mono w-[4.5rem] text-right">${hms(v)}</span></div>`).join('')}</div>`:''}</div>
+ <div class="flex gap-2 mt-3 flex-wrap"><button id="calDone" class="btn pri" onclick="calApply()"><i data-lucide="check" class="w-4 h-4"></i>Done${CAL.set.size>1?' ('+CAL.set.size+')':''}</button><button class="btn" onclick="calPick('${td}')" title="Double-click to open Today in the Dashboard">Today</button><button class="btn" style="border-color:#34d399;color:#6ee7b7" onclick="calExport()"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i>Export Excel</button></div>${RS.a.length?`<div class="text-sm font-semibold mb-2 mt-5">Reason Breakdown</div><div class="space-y-1.5 mb-3">${RS.a.map(([r,v])=>`<div class="flex items-center gap-2 text-xs"><span class="w-28 shrink-0 truncate">${esc(r)}</span><span class="flex-1 h-2 rounded bg-white/10 overflow-hidden"><i class="block h-full" style="width:${(v/rtot*100).toFixed(1)}%;background:#f43f5e"></i></span><span class="font-mono w-[4.5rem] text-right">${hms(v)}</span></div>`).join('')}</div>`:''}</div>
  <div class="min-w-0 flex flex-col lg:h-full lg:min-h-0"><div class="shrink-0">
  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">${kp('Active Cameras',act.length)}${kp('Fleet Uptime',avf(av),col(av))}${kp('Total Uptime',hms(up),'#34d399')}${kp('Total Downtime',hms(dn),dn?'#f43f5e':'#34d399')}${kp('Downtime Events',nEv,nEv?'#fbbf24':'#34d399')}${kp('Cameras Affected',hit+' / '+act.length,hit?'#fbbf24':'#34d399')}${kp('Online (Full Day)',act.length-hit,'#34d399')}${kp('Top Reason',RS.a[0]?esc(RS.a[0][0]):'—')}</div>
  <div class="text-[11px] text-slate-400 mb-1">Shift-wise availability</div><div class="grid grid-cols-3 gap-2 mb-3">${shift.map(x=>`<div class="cal-k"><span>Shift ${x.k} · ${x.lab}</span><b style="color:${col(x.av)}">${x.nd?'No data':avf(x.av)}</b><span style="text-transform:none">${x.n} event · off ${hms(x.off)}</span></div>`).join('')}</div>
@@ -845,8 +908,8 @@ function dxSmooth(P){if(P.length<2)return'';let d='M'+P[0][0].toFixed(1)+','+P[0
 function dxLine(s,cut,n){
  const act=new Set(S.cams.filter(c=>c.active).map(c=>c.id)),pts=[];
  const offIn=(a,b)=>{let t=0;S.events.forEach(x=>{if(!act.has(x.cameraId))return;const p=Math.max(x.start,a),q=Math.min(evEnd(x),b);if(q>p)t+=q-p});return t};
- const RG=dxRange(),hourly=V.dxh||RG.key==='day';
- if(n>0){if(hourly){const w0=W(clampD(V.d),'ALL'),ds=w0[0],ct=Math.min(w0[1],now());for(let a=ds;a<ct;a+=H){const b=Math.min(a+H,ct);pts.push({l:pad((6+Math.round((a-ds)/H))%24)+':00',v:Math.max(0,100*(1-offIn(a,b)/((b-a)*n)))})}}
+ const RG=dxRange(),hourly=V.dxh||RG.a===RG.end;
+ if(n>0){if(hourly){const w0=W(RG.a===RG.end?RG.a:clampD(V.d),'ALL'),ds=w0[0],ct=Math.min(w0[1],now());for(let a=ds;a<ct;a+=H){const b=Math.min(a+H,ct);pts.push({l:pad((6+Math.round((a-ds)/H))%24)+':00',v:Math.max(0,100*(1-offIn(a,b)/((b-a)*n)))})}}
  else{RG.days.forEach(d=>{const w=W(d,'ALL'),b=Math.min(w[1],now());if(b<=w[0])return;pts.push({l:d.slice(8,10)+'/'+d.slice(5,7),v:Math.max(0,100*(1-offIn(w[0],b)/((b-w[0])*n)))})})}}
  if(!pts.length)return'<div class="text-sm text-slate-400 py-10 text-center">No data yet</div>';
  const Wd=innerWidth<640?400:innerWidth<1024?560:900,Hd=190,pl=46,pr=18,pt=14,pb=24,iw=Wd-pl-pr,ih=Hd-pt-pb;
@@ -878,7 +941,7 @@ const areaBox=T=>{const lst=AREAS.concat(T.some(x=>!areaOf(x.c))?['']:[]);
   return`<div class="rounded-lg border border-white/10 px-2 py-1" data-dgo="area" data-a="${esc(a)}"><div class="flex items-center gap-2 text-[11px] font-bold flex-wrap"><span class="text-sky-300 text-xs">${esc(a||'Unassigned')}</span><span class="text-slate-200">Total ${L.length}</span><span class="ml-auto text-emerald-300">● Online ${on}</span><span class="${dn?'text-rose-300':'text-slate-400'}">● Down ${dn}</span></div><div class="flex gap-1 mt-1 flex-wrap">${ty}</div></div>`}).join('');
  return`<div class="dxc" style="--d:8"><div class="dxh mb-1 flex items-center gap-2"><span class="dxdot" style="background:#38bdf8"></span>Areas<span class="ml-auto text-[11px] text-slate-400">Total ${T.length}</span></div><div class="dxs flex-1 min-h-0 overflow-y-auto pr-1 space-y-1.5">${rows}</div></div>`};
 function vDash(){
- const RG=dxRange(),s=RG.s,e=RG.e,T=S.cams.filter(c=>c.active).map(c=>({c,st:calc(c,s,e)})),off=T.filter(x=>openEv(x.c.id)).sort((a,b)=>openEv(b.c.id).start-openEv(a.c.id).start);
+ const RG=dxRange(),s=RG.s,e=RG.e,T=S.cams.filter(c=>c.active).map(c=>({c,st:calcW(c,RG)})),off=T.filter(x=>openEv(x.c.id)).sort((a,b)=>openEv(b.c.id).start-openEv(a.c.id).start);
  const cut=Math.min(e,now()),n=T.length,A=DXSEEN?'':' dx-a';DXSEEN=1;KL={T,lab:RG.label};
  const on=n-off.length,up=sum(T,'on'),dn=sum(T,'off'),p=sum(T,'per'),av=p?up/p*100:null,free=T.filter(x=>x.st.n===0).length,evN=sum(T,'n');
  const live=now()<e?1:0,dot=live?'<span class="dxlive"></span>':'';
@@ -886,17 +949,17 @@ function vDash(){
  const kg=(h,k)=>h.replace('class="dxc dxk"','class="dxc dxk" data-dgo="'+k+'" title="Double click = camera list"');
  const ring=dxRings([av||0,n?on/n*100:0,n?free/n*100:0]);
  const rg=(c,l,v,sub)=>`<div><div style="color:${c}" class="text-[11px] tracking-[.14em] uppercase font-medium">${l}</div><div class="text-lg font-light leading-tight">${v}</div><div class="text-[11px] text-slate-400">${sub}</div></div>`;
- const RS=reasonStats(S.cams.filter(c=>c.active),s,e),rl=RS.a,rtot=RS.T||1;
+ const RS=reasonStatsW(S.cams.filter(c=>c.active),RG),rl=RS.a,rtot=RS.T||1;
  const TY={PTZ:'#a78bfa',BULLET:'#fbbf24',DOME:'#22d3ee'},tc=Object.keys(TY).map(k=>[k,T.filter(x=>x.c.type===k).length,T.filter(x=>x.c.type===k&&!openEv(x.c.id)).length]);
  const oth=n-tc.reduce((a,b)=>a+b[1],0);
  return`<div class="dx${A}"><div id="dxk" data-live="${live}" data-t="${now()}" data-up="${up}" data-dn="${dn}" data-n="${on}" data-f="${off.length}" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2">
  ${kg(kp('Total Cameras',n,'Active cameras','#e2e8f0'),'kt')+kg(kp('Online',on,n?pf(on/n*100)+'% of fleet':'—','#6ee7b7'),'kon')+kg(kp('Offline',off.length,off.length?'Needs attention':'All clear','#fb7185'),'koff')+kp('Total Uptime',hms(up),live?'Ticking live':'Period complete','#a7f3d0','kUp')+kp('Total Downtime',hms(dn),evN+' downtime event'+(evN===1?'':'s'),'#fda4af','kDn')+kp('Availability',avf(av),'Target 99%','#7dd3fc','kAv')}</div>
  <div class="dxr grid lg:grid-cols-5 gap-3 mt-3">
-  <div class="dxc lg:col-span-2" style="--d:2"><div class="dxh mb-2 flex items-center gap-2"><span class="dxdot" style="background:#fb7185"></span>Currently offline<span class="ml-auto flex items-center gap-2"><span class="text-[11px] text-slate-400">${off.length}</span><button id="dron" type="button" class="btn !py-0.5 !px-2 text-[11px] flex items-center gap-1" onclick="dRestore()"><i data-lucide="power" class="w-3 h-3"></i> Mark Online${dsc().length?' <b>('+dsc().length+')</b>':''}</button></span></div><div class="dxs flex-1 min-h-0 overflow-y-auto pr-1">${off.map(x=>{const o=openEv(x.c.id);return`<div class="py-1 border-b border-white/5 text-[11px]${DSEL.has(x.c.id)?' dsel':''}" data-dgo="off" data-a="${esc(x.c.id)}"><div class="flex justify-between gap-2"><span class="truncate">${esc(rn(x.c))} · ${esc(x.c.loc)} <span class="text-slate-400">(${x.c.un})</span></span><b class="lv text-rose-300 font-mono" data-s="${o.start}">${hms(now()-o.start)}</b></div><div class="flex justify-between text-[11px] text-slate-400"><span class="font-mono">${esc(x.c.ip)}</span><span>${esc(o.reason)} · ${dts(o.start)}</span></div></div>`}).join('')||'<div class="text-emerald-300 text-sm py-6 text-center">All cameras online</div>'}</div></div>
+  <div class="dxc lg:col-span-2" style="--d:2"><div class="dxh mb-2 flex items-center gap-2"><span class="dxdot" style="background:#fb7185"></span>Currently offline<span class="ml-auto flex items-center gap-2"><span class="text-[11px] text-slate-400">${off.length}</span><button id="dron" type="button" class="btn !py-0.5 !px-2 text-[11px] flex items-center gap-1" onclick="dRestore()"><i data-lucide="power" class="w-3 h-3"></i> Mark Online${dsc().length?' <b>('+dsc().length+')</b>':''}</button></span></div><div class="dxs flex-1 min-h-0 overflow-y-auto pr-1">${off.map(x=>{const o=openEv(x.c.id);return`<div class="py-1 border-b border-white/5 text-[11px]${DSEL.has(x.c.id)?' dsel':''}" data-dgo="off" data-a="${esc(x.c.id)}"><div class="flex justify-between gap-2"><span class="truncate">${esc(rn(x.c))} · <span class="dcn">${esc(x.c.loc)}</span> <span class="text-slate-400">(${x.c.un})</span></span><b class="lv text-rose-300 font-mono" data-s="${o.start}">${hms(now()-o.start)}</b></div><div class="flex justify-between text-[11px] text-slate-400"><span class="font-mono">${esc(x.c.ip)}</span><span>${esc(o.reason)} · ${dts(o.start)}</span></div></div>`}).join('')||'<div class="text-emerald-300 text-sm py-6 text-center">All cameras online</div>'}</div></div>
   <div class="dxc lg:col-span-3" style="--d:3"><div class="dxh mb-3 flex items-center gap-2"><span class="dxdot" style="background:#34d399"></span>Resource availability<span class="ml-auto text-[11px] text-slate-400">${RG.label} · double click = timeline</span></div><div class="dxs flex-1 min-h-0 overflow-y-auto pr-1 grid sm:grid-cols-2 xl:grid-cols-3 gap-x-5 gap-y-2 content-start">${S.resources.map((r,i)=>{const L=T.filter(x=>x.c.resId===r.id),q=sum(L,'per'),a=q?sum(L,'on')/q*100:null,col=a===null||a>=99?'linear-gradient(90deg,#10b981,#6ee7b7)':a>=95?'linear-gradient(90deg,#d97706,#fcd34d)':'linear-gradient(90deg,#e11d48,#fda4af)';return L.length?`<div class="rt cursor-pointer" data-rt="${r.id}"><div class="flex justify-between text-[11px] mb-1"><span class="truncate pr-2">${esc(r.name)}</span><span style="color:${pctC(a)}">${avf(a)}</span></div><div class="dxbar"><i style="width:${a===null?100:a}%;background:${col};--i:${i}"></i></div></div>`:''}).join('')}</div></div>
  </div>
  <div class="dxr dxr2 grid lg:grid-cols-4 gap-3 mt-3">
-  <div class="dxc lg:col-span-2" style="--d:4"><div class="dxh mb-1 flex items-center gap-2 flex-wrap"><span class="dxdot" style="background:#34d399"></span>Availability trend<span class="text-[11px] text-slate-400">${V.dxh||RG.key==='day'?'hourly · '+dmy(clampD(V.d)):'daily · '+RG.label}</span><span class="ml-auto flex gap-1"><button onclick="dxR()" class="dxtg ${V.dxh||RG.key==='day'?'on':''}">Today · hourly</button></span></div>${dxLine(s,cut,n)}</div>
+  <div class="dxc lg:col-span-2" style="--d:4"><div class="dxh mb-1 flex items-center gap-2 flex-wrap"><span class="dxdot" style="background:#34d399"></span>Availability trend<span class="text-[11px] text-slate-400">${V.dxh||RG.a===RG.end?'hourly · '+dmy(RG.a===RG.end?RG.a:clampD(V.d)):'daily · '+RG.label}</span><span class="ml-auto flex gap-1"><button onclick="dxR()" class="dxtg ${V.dxh||RG.key==='day'?'on':''}">Today · hourly</button></span></div>${dxLine(s,cut,n)}</div>
   <div class="dxc" style="--d:5"><div class="dxh mb-3 flex items-center gap-2"><span class="dxdot" style="background:#fa3d6e"></span>Activity · ${RG.name}</div><div class="flex-1 min-h-0 flex items-center gap-4 justify-center">${ring}<div class="space-y-1.5">${rg('#fa3d6e','Availability',avf(av),'uptime ÷ total time')+rg('#9be71c','Online now',on+'<span class="text-sm text-slate-400"> / '+n+'</span>','cameras reachable')+rg('#22e4ee','Event-free',free+'<span class="text-sm text-slate-400"> / '+n+'</span>','no downtime in period')}</div></div></div>
   <div class="dxc" style="--d:5"><div class="dxh mb-3 flex items-center gap-2"><span class="dxdot" style="background:#a78bfa"></span>Camera types</div><div class="flex-1 min-h-0 flex items-center gap-4 justify-center">${dxDonut(tc.map(t=>[t[1],TY[t[0]]]).concat([[oth,'#64748b']]),n)}<div class="space-y-1.5">${tc.map(t=>`<div class="flex items-center gap-2.5"><span class="dxdot" style="background:${TY[t[0]]}"></span><div><div class="text-sm">${t[0]} <b class="font-medium">${t[1]}</b></div><div class="text-[11px] text-slate-400">${t[2]} online</div></div></div>`).join('')}</div></div></div>
  </div>
@@ -1056,14 +1119,38 @@ const togAll=()=>{if(!TRIDS.length)return;const ac=TRIDS.every(i=>S.col[i]);TRID
 const START_D='2026-10-01',START_MS=Date.parse(START_D+'T06:00:00+05:30');
 const clampD=d=>!d?d:d<START_D?START_D:d>fd(now())?fd(now()):d,clampM=m=>!m?m:m<START_D.slice(0,7)?START_D.slice(0,7):m>fd(now()).slice(0,7)?fd(now()).slice(0,7):m;
 const addD=(d,k)=>new Date(Date.parse(d+'T00:00:00Z')+k*DAY).toISOString().slice(0,10);
-function dxRange(){const key=V.rg||'day',end=clampD(V.d);let a=end;if(key==='week')a=addD(end,-6);else if(key==='month')a=addD(end,-29);else if(key==='all')a=START_D;if(a<START_D)a=START_D;const days=[];for(let d=a;d<=end;d=addD(d,1))days.push(d);
- return{key,a,end,days,s:W(a,'ALL')[0],e:W(end,'ALL')[1],label:a===end?dmy(end):dmy(a)+' → '+dmy(end),name:key==='all'?'All time':key==='month'?'Last 30 days':key==='week'?'Last 7 days':(end===fd(now())?'Today':dmy(end))}}
-const dxSel=()=>{const R0=dxRange();return`<div class="flex flex-wrap items-center gap-2"><div class="dxsel">${[['all','All time'],['month','1 Month'],['week','1 Week'],['day','1 Day']].map(([k,l])=>`<button onclick="dxRg('${k}')" class="${(V.rg||'day')===k?'on':''}">${l}</button>`).join('')}</div><span class="dxrl">${R0.label}</span></div>`};
-const dxRg=k=>{V.rg=k;try{localStorage.setItem('cctv_rg',k)}catch(e){}DXSEEN=0;R()};
-const dnav=n=>{V.d=clampD(fd(Date.parse(V.d+'T12:00:00+05:30')+n*DAY));R()};
+const MNF=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function dxRange(){const key=V.rg||'day',td=fd(now()),dd=clampD(V.d),dim0=(y,m)=>new Date(Date.UTC(y,m,0)).getUTCDate();let a=dd,end=dd,days=null;
+ if(key==='all'){a=START_D;end=td}
+ else if(key==='month'){const[y,m]=dd.split('-').map(Number);a=dd.slice(0,8)+'01';end=dd.slice(0,8)+pad(dim0(y,m))}
+ else if(key==='week'){const[y,m,d]=dd.split('-').map(Number),st=Math.floor((d-1)/7)*7+1;a=dd.slice(0,8)+pad(st);end=dd.slice(0,8)+pad(Math.min(st+6,dim0(y,m)))}
+ else if(key==='custom'){
+  if(V.rset&&V.rset.length){days=[...new Set(V.rset)].filter(d=>d>=START_D&&d<=td).sort();if(days.length){a=days[0];end=days[days.length-1]}else days=null}
+  if(!days){a=clampD(V.ra||dd);end=clampD(V.rb||dd);if(a>end){const t=a;a=end;end=t}}}
+ if(a<START_D)a=START_D;if(end>td)end=td;if(end<a)end=a;
+ if(!days){days=[];for(let d=a;d<=end;d=addD(d,1))days.push(d)}
+ const segs=[];days.forEach(d=>{const l=segs[segs.length-1];if(l&&addD(l[1],1)===d)l[1]=d;else segs.push([d,d])});
+ const wins=segs.map(([x,y])=>[W(x,'ALL')[0],W(y,'ALL')[1]]),isSet=segs.length>1;
+ const mn=MNF[+a.slice(5,7)-1];
+ const lab=isSet?(days.length<=3?days.map(dmy).join(' \u00b7 '):dmy(a)+' \u2026 '+dmy(end)+' ('+days.length+' days)'):(a===end?dmy(end):dmy(a)+' \u2192 '+dmy(end));
+ return{key,a,end,days,wins,set:isSet,s:W(a,'ALL')[0],e:W(end,'ALL')[1],label:lab,name:key==='all'?'All time':key==='month'?mn+' '+a.slice(0,4):key==='week'?(+a.slice(8))+'\u2013'+(+end.slice(8))+' '+mn.slice(0,3):key==='custom'?lab:(end===td?'Today':dmy(end))}}
+function calcW(c,RG){const w=RG.wins;if(!w||w.length<2)return calc(c,RG.s,RG.e);
+ const sg=[],rs={};let off=0,per=0,n=0;w.forEach(([a,b])=>{const k=calc(c,a,b);k.sg.forEach(x=>sg.push(x));Object.entries(k.rs).forEach(([r,v])=>rs[r]=(rs[r]||0)+v);off+=k.off;per+=k.per;n+=k.n});
+ const mr=Object.entries(rs).sort((a,b)=>b[1]-a[1])[0];
+ return{sg,rs,off,per,on:per-off,n,av:per?(per-off)/per*100:null,mr:mr?mr[0]:'\u2014'}}
+const reasonStatsW=(cams,RG)=>{const tot={};let ev=0;cams.forEach(c=>{const st=calcW(c,RG);ev+=st.n;Object.entries(st.rs).forEach(([r,v])=>tot[r]=(tot[r]||0)+v)});const a=Object.entries(tot).sort((x,y)=>y[1]-x[1]);return{a,T:a.reduce((t,x)=>t+x[1],0),ev}};
+const dxSel=()=>{const R0=dxRange();return`<div class="flex flex-wrap items-center gap-2"><div class="dxsel">${[['all','All time'],['month','1 Month'],['week','1 Week'],['day','1 Day']].map(([k,l])=>`<button onclick="dxRg('${k}')" class="${(V.rg||'day')===k?'on':''}">${l}</button>`).join('')}</div><button type="button" class="dxrl dxrb" onclick="rpOpen()" title="Click to choose a date range">${R0.label}</button></div>`};
+const dxRg=k=>{if(V.rg==='custom'&&V.rb)V.d=clampD(V.rb);V.rg=k;try{localStorage.setItem('cctv_rg',k)}catch(e){}DXSEEN=0;R()};
+const dnav=n=>{const t=fd(now());
+ if(V.p==='dash'){const R0=dxRange(),k=R0.key;
+  if(k==='all'||R0.set)return;
+  if(k==='month'){const[y,m]=R0.a.split('-').map(Number),nd=new Date(Date.UTC(y,m-1+n,1)).toISOString().slice(0,10);if(nd<START_D.slice(0,8)+'01'||nd>t)return;V.d=nd;R();return}
+  if(k==='week'){if(n<0){if(R0.a<=START_D)return;V.d=addD(R0.a,-1)}else{const dm=+R0.a.slice(8),dim=new Date(Date.UTC(+R0.a.slice(0,4),+R0.a.slice(5,7),0)).getUTCDate(),fe=Math.min(dm+6,dim),nd=addD(R0.a,fe-dm+1);if(nd>t)return;V.d=nd}R();return}
+  if(k==='custom'){const sp=R0.days.length;let na=addD(R0.a,n*sp),nb=addD(R0.end,n*sp);if(n<0&&na<START_D){na=START_D;nb=addD(START_D,sp-1)}if(n>0&&nb>t){nb=t;na=addD(t,-(sp-1))}if(na<START_D)na=START_D;V.ra=na;V.rb=nb;V.d=nb;R();return}}
+ V.d=clampD(fd(Date.parse(V.d+'T12:00:00+05:30')+n*DAY));R()};
 function R(){TT.length=0;V.d=clampD(V.d);if(V.p!=='track'&&V.sh==='D30')V.sh='ALL';V.m=clampM(V.m);if(V.hd)V.hd=clampD(V.hd);const n=NAV.find(x=>x[0]===V.p);$('#usr').innerHTML=opt(S.users.map(u=>[String(u.id),u.name]),String(S.uid));
  $('#nav').innerHTML=NAV.map(x=>`<button onclick="go('${x[0]}')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm ${V.p===x[0]?'bg-sky-500/15 text-sky-300 border border-sky-500/40':'text-slate-400 hover:bg-white/5'}"><i data-lucide="${x[2]}" class="w-4 h-4"></i>${x[1]}</button>`).join('');
- const dsh=V.p==='dash';$('#main').className=dsh?'p-3':'p-5';$('#main').innerHTML=`<div class="${dsh?'mb-2 flex flex-wrap items-center justify-between gap-2':'mb-4'} noprint"><h1 class="${dsh?'text-lg':'text-2xl'} font-bold tracking-wide">${n[1].toUpperCase()}</h1>${dsh?dxSel():`<div class="text-sm text-slate-400">${SUB[V.p]||''}</div>`}</div>`+n[3]();document.documentElement.classList.toggle('nosb',dsh);$('#dd').innerHTML='<i data-lucide="calendar" class="w-3.5 h-3.5"></i>'+dmy(V.d)+(V.d===fd(now())?' <b>Today</b>':'');$('#dpv').disabled=V.d<=START_D;$('#dnx').disabled=V.d>=fd(now());lucide.createIcons();if(document.getElementById('camQ'))camQ();dxFit();requestAnimationFrame(dxFit);setTimeout(dxFit,350)}
+ const dsh=V.p==='dash';$('#main').className=dsh?'p-3':'p-5';$('#main').innerHTML=`<div class="${dsh?'mb-2 flex flex-wrap items-center justify-between gap-2':'mb-4'} noprint"><h1 class="${dsh?'text-lg':'text-2xl'} font-bold tracking-wide">${n[1].toUpperCase()}</h1>${dsh?dxSel():`<div class="text-sm text-slate-400">${SUB[V.p]||''}</div>`}</div>`+n[3]();document.documentElement.classList.toggle('nosb',dsh);$('#dd').innerHTML='<i data-lucide="calendar" class="w-3.5 h-3.5"></i>'+dmy(V.d)+(V.d===fd(now())?' <b>Today</b>':'');{const R1=dsh?dxRange():null,t1=fd(now());$('#dpv').disabled=dsh?(R1.key==='all'||R1.set||R1.a<=START_D):V.d<=START_D;$('#dnx').disabled=dsh?(R1.key==='all'||R1.set||R1.end>=t1):V.d>=t1}lucide.createIcons();if(document.getElementById('camQ'))camQ();dxFit();requestAnimationFrame(dxFit);setTimeout(dxFit,350)}
 function dxFit(){const d=document.querySelector('.dx'),H=document.documentElement,lk=!!d&&innerWidth>=1024;H.classList.toggle('dlock',lk);if(!d)return;if(!lk){d.style.height='';return}scrollTo(0,0);const m=document.getElementById('main'),pb=m?parseFloat(getComputedStyle(m).paddingBottom)||0:0;d.style.height=Math.max(300,Math.floor(innerHeight-d.getBoundingClientRect().top-pb-2))+'px'}
 addEventListener('resize',dxFit);
 let _wb=innerWidth<640?0:innerWidth<1024?1:2;addEventListener('resize',()=>{const b=innerWidth<640?0:innerWidth<1024?1:2;if(b!==_wb){_wb=b;if(b===2)sbT(0);if(V.p==='dash')R()}});
