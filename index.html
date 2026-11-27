@@ -61,6 +61,7 @@ td.g{border-right:1px solid #1d3f91;background:#0a1836}
 .dx-a .dxc{animation:dxin .65s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--d,0)*70ms)}
 .dx-a .dxbar i{animation:dxgrow 1.1s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*45ms + 250ms)}
 .dx-a .dxrg{animation:dxring 1.5s cubic-bezier(.2,.8,.2,1) both}
+.dxsc{position:relative;display:flex;flex:1 1 0;min-height:190px;width:100%;overflow:hidden}.dxsc>svg,.dxsv>svg{display:block}.dxya{flex:none}.dxsv{flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(148,163,184,.4) transparent}.dxp .tip{display:none!important}#dxtt{position:fixed;display:none;z-index:90;pointer-events:none;white-space:nowrap;background:#101a38;color:#e2e8f0;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:.25rem .7rem;font-size:12px;box-shadow:0 8px 20px rgba(0,0,0,.6)}.dxtl{position:absolute;right:4px;top:0;font-size:10px;color:#e8c872;pointer-events:none}@media (min-width:1024px){.dx .dxsc{min-height:0}}
 .dx-a .dxline{stroke-dasharray:1;animation:dxdraw 1.8s cubic-bezier(.4,0,.2,1) both .3s}.dx-a .dxarea{animation:dxfade 1.4s ease both 1s}
 .dx-a .dxrad{animation:dxpop 1.1s cubic-bezier(.2,.8,.2,1) both .3s}
 .dx-a .dxdn{animation:dxring 1.2s cubic-bezier(.2,.8,.2,1) both}
@@ -912,6 +913,42 @@ let DXSEEN=0;
 const dxR=()=>{V.dxh=!V.dxh;DXSEEN=0;R()};
 function dxTick(){const k=$('#dxk');if(!k||k.dataset.live!=='1')return;const d=now()-(+k.dataset.t),up=+k.dataset.up+(+k.dataset.n)*d,dn=+k.dataset.dn+(+k.dataset.f)*d,p=up+dn;$('#kUp').textContent=hms(up);$('#kDn').textContent=hms(dn);$('#kAv').textContent=avf(p?up/p*100:null)}
 function dxSmooth(P){if(P.length<2)return'';let d='M'+P[0][0].toFixed(1)+','+P[0][1].toFixed(1);for(let i=0;i<P.length-1;i++){const a=P[i-1]||P[i],b=P[i],c=P[i+1],f=P[i+2]||c;d+='C'+(b[0]+(c[0]-a[0])/6).toFixed(1)+','+(b[1]+(c[1]-a[1])/6).toFixed(1)+','+(c[0]-(f[0]-b[0])/6).toFixed(1)+','+(c[1]-(f[1]-b[1])/6).toFixed(1)+','+c[0].toFixed(1)+','+c[1].toFixed(1)}return d}
+/* All time trend: fixed % axis + sideways scrolling days (mouse wheel) */
+let DXP=[],DXSX=0;
+const DXVIS=56; /* days visible at once = 8 weeks */
+function dxScroll(){
+ const box=document.querySelector('.dxsc');if(!box||!DXP.length)return;
+ const W0=box.clientWidth,Hd=box.clientHeight;if(!W0||!Hd)return;
+ const key=W0+'x'+Hd;if(box.dataset.k===key)return;box.dataset.k=key;dxTipOff();
+ const pts=DXP,N=pts.length,ax=50,sb=8,H1=Hd-sb,pt=22,pb=22,ih=Math.max(40,H1-pt-pb),base=pt+ih,view=W0-ax,pad0=22;
+ const daily=DXMODE==='day',dw=daily?Math.max(42,(view-2*pad0)/Math.max(1,Math.min(N,31)-1)):(view-2*pad0)/Math.max(1,Math.min(N,DXVIS)-1),Wd=Math.max(view,Math.ceil(pad0*2+dw*(N-1)));
+ let lo=Math.max(0,Math.floor(Math.min(...pts.map(p=>p.v),99)-1));if(100-lo<3)lo=97;
+ const yv=v=>pt+ih*(1-(v-lo)/(100-lo)),xv=i=>N===1?Wd/2:pad0+(Wd-2*pad0)*i/(N-1);
+ const P=pts.map((p,i)=>[xv(i),yv(p.v)]),ln=dxSmooth(P),last=P[N-1];
+ const area=N>1?ln+'L'+last[0].toFixed(1)+','+base+'L'+P[0][0].toFixed(1)+','+base+'Z':'';
+ const steps=ih<70?2:4;let yl='',g='';
+ for(let k=0;k<=steps;k++){const v=lo+(100-lo)*k/steps,y=yv(v);yl+=`<text x="${ax-8}" y="${y+3.5}" text-anchor="end" font-size="11" fill="#6b7a96">${pf(v)}%</text>`;g+=`<line x1="0" x2="${Wd}" y1="${y}" y2="${y}" stroke="rgba(255,255,255,.06)"/>`}
+ /* weekly dates only (01,07,14,21,28 + latest); a date too close to a more important one is skipped */
+ const rank=i=>i===N-1?3:pts[i].l.slice(0,2)==='01'?2:['07','14','21','28'].includes(pts[i].l.slice(0,2))?1:0,lab=[];
+ [3,2,1].forEach(r=>pts.forEach((p,i)=>{if(rank(i)===r&&lab.every(j=>Math.abs(xv(i)-xv(j))>=40))lab.push(i)}));
+ if(daily){lab.length=0;pts.forEach((p,i)=>lab.push(i))}
+ lab.forEach(i=>{g+=`<text x="${xv(i)}" y="${H1-6}" text-anchor="middle" font-size="11" fill="#6b7a96">${pts[i].l}</text>`});
+ const ty=yv(99);if(ty>=pt&&ty<base)g+=`<line x1="0" x2="${Wd}" y1="${ty}" y2="${ty}" stroke="#e8c872" stroke-opacity=".55" stroke-dasharray="4 5"/>`;
+ const dots=P.map((q,i)=>`<g class="dxp" transform="translate(${q[0].toFixed(1)},${q[1].toFixed(1)})" data-x="${q[0].toFixed(1)}"><circle r="${Math.max(4,Math.min(12,dw/2)).toFixed(1)}" fill="transparent"/><circle class="dd" r="${i===N-1?4:2.6}" fill="#0a1226" stroke="#34d399" stroke-width="2"/><g class="tip" transform="translate(0,${q[1]<50?14:-34})"><rect x="-56" y="0" width="112" height="24" rx="8" fill="#101a38" stroke="rgba(255,255,255,.14)"/><text y="16" text-anchor="middle" font-size="11" fill="#e2e8f0">${pts[i].l} · ${avf(pts[i].v)}</text></g></g>`).join('');
+ box.innerHTML=`<svg class="dxya" width="${ax}" height="${H1}">${yl}</svg><div class="dxsv"><svg width="${Wd}" height="${H1}"><defs><linearGradient id="dxa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34d399" stop-opacity=".32"/><stop offset="1" stop-color="#34d399" stop-opacity="0"/></linearGradient></defs>${g}${area?`<path class="dxarea" d="${area}" fill="url(#dxa)"/>`:''}<path class="dxline" d="${ln||'M0,0'}" pathLength="1" fill="none" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" style="filter:drop-shadow(0 0 6px rgba(52,211,153,.55))"/>${dots}<circle class="dxping" cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" fill="none" stroke="#34d399"/></svg></div><span class="dxtl">- - TARGET 99%</span>`;
+ const sv=box.querySelector('.dxsv');
+ sv.scrollLeft=Math.max(0,sv.scrollWidth-sv.clientWidth-DXSX); /* open on the latest date, keep position on refresh */
+ sv.addEventListener('scroll',()=>{dxTipOff();DXSX=Math.max(0,sv.scrollWidth-sv.clientWidth-sv.scrollLeft)},{passive:true});
+ box.addEventListener('wheel',e=>{if(e.ctrlKey||sv.scrollWidth<=sv.clientWidth)return;e.preventDefault();const d=Math.abs(e.deltaY)>Math.abs(e.deltaX)?e.deltaY:e.deltaX;sv.scrollLeft+=d*(e.deltaMode===1?32:e.deltaMode===2?sv.clientWidth:1)},{passive:false});
+}
+function dxTipOff(){const t=document.getElementById('dxtt');if(t)t.style.display='none'}
+document.addEventListener('pointerover',e=>{const d=e.target.closest&&e.target.closest('.dxp');if(!d)return;let t=document.getElementById('dxtt');if(!t){t=document.createElement('div');t.id='dxtt';document.body.append(t)}
+ t.textContent=d.querySelector('.tip text').textContent;t.style.display='block';const r=d.querySelector('.dd').getBoundingClientRect(),w=t.offsetWidth,h=t.offsetHeight;
+ t.style.left=Math.min(innerWidth-w-6,Math.max(6,r.left+r.width/2-w/2))+'px';t.style.top=(r.top-h-10<6?r.bottom+10:r.top-h-10)+'px'});
+document.addEventListener('pointerout',e=>{if(e.target.closest&&e.target.closest('.dxp'))dxTipOff()});
+/* Days = every date, Weekly = 8 weeks per screen */
+let DXMODE=(()=>{try{return localStorage.getItem('cctv_trend')||'week'}catch(e){return'week'}})();
+const dxMode=m=>{DXMODE=m;try{localStorage.setItem('cctv_trend',m)}catch(e){}V.dxh=false;DXSX=0;DXSEEN=0;R()};
 function dxLine(s,cut,n){
  const act=new Set(S.cams.filter(c=>c.active).map(c=>c.id)),pts=[];
  const capT=(a,b)=>S.cams.reduce((t,c)=>c.active?t+Math.max(0,b-Math.max(a,+c.addedAt||0)):t,0)||1,offIn=(a,b)=>{let t=0;S.events.forEach(x=>{if(!act.has(x.cameraId))return;const p=Math.max(x.start,a),q=Math.min(evEnd(x),b);if(q>p)t+=q-p});return t};
@@ -919,13 +956,14 @@ function dxLine(s,cut,n){
  if(n>0){if(hourly){const w0=W(RG.a===RG.end?RG.a:clampD(V.d),'ALL'),ds=w0[0],ct=Math.min(w0[1],now());for(let a=ds;a<ct;a+=H){const b=Math.min(a+H,ct);pts.push({l:pad((6+Math.round((a-ds)/H))%24)+':00',v:Math.max(0,100*(1-offIn(a,b)/capT(a,b)))})}}
  else{RG.days.forEach(d=>{const w=W(d,'ALL'),b=Math.min(w[1],now());if(b<=w[0])return;pts.push({l:d.slice(8,10)+'/'+d.slice(5,7),v:Math.max(0,100*(1-offIn(w[0],b)/capT(w[0],b)))})})}}
  if(!pts.length)return'<div class="text-sm text-slate-400 py-10 text-center">No data yet</div>';
+ if(RG.key==='all'&&!hourly){DXP=pts;return'<div class="dxsc"></div>'}
  const Wd=innerWidth<640?400:innerWidth<1024?560:900,Hd=190,pl=46,pr=18,pt=14,pb=24,iw=Wd-pl-pr,ih=Hd-pt-pb;
  let lo=Math.max(0,Math.floor(Math.min(...pts.map(p=>p.v),99)-1));if(100-lo<3)lo=97;
  const yv=v=>pt+ih*(1-(v-lo)/(100-lo)),xv=i=>pl+(pts.length===1?iw/2:iw*i/(pts.length-1));
  const P=pts.map((p,i)=>[xv(i),yv(p.v)]),ln=dxSmooth(P),last=P[P.length-1],base=pt+ih;
  const area=P.length>1?ln+'L'+last[0].toFixed(1)+','+base+'L'+P[0][0].toFixed(1)+','+base+'Z':'';
  let g='';for(let k=0;k<=4;k++){const v=lo+(100-lo)*k/4,y=yv(v);g+=`<line x1="${pl}" x2="${Wd-pr}" y1="${y}" y2="${y}" stroke="rgba(255,255,255,.06)"/><text x="${pl-8}" y="${y+3.5}" text-anchor="end" font-size="10" fill="#6b7a96">${pf(v)}%</text>`}
- const step=Math.ceil(pts.length/(Wd<500?5:8));pts.forEach((p,i)=>{if(i%step===0||i===pts.length-1)g+=`<text x="${xv(i)}" y="${Hd-8}" text-anchor="middle" font-size="10" fill="#6b7a96">${p.l}</text>`});
+ const step=Math.ceil(pts.length/(Wd<500?5:8));pts.forEach((p,i)=>{const z=pts.length-1;if(i===z||(i%step===0&&z-i>=step*.7))g+=`<text x="${xv(i)}" y="${Hd-8}" text-anchor="middle" font-size="10" fill="#6b7a96">${p.l}</text>`});
  const ty=yv(99),tg=ty>pt&&ty<base?`<line x1="${pl}" x2="${Wd-pr}" y1="${ty}" y2="${ty}" stroke="#e8c872" stroke-opacity=".55" stroke-dasharray="4 5"/><text x="${Wd-pr}" y="${ty-5}" text-anchor="end" font-size="9.5" fill="#e8c872" fill-opacity=".8">TARGET 99%</text>`:'';
  const dots=P.map((q,i)=>{const tx=q[0]<70?44:q[0]>Wd-70?-44:0,ty2=q[1]<50?30:-34;return`<g class="dxp" transform="translate(${q[0].toFixed(1)},${q[1].toFixed(1)})"><circle r="12" fill="transparent"/><circle class="dd" r="${i===P.length-1?4:2.6}" fill="#0a1226" stroke="#34d399" stroke-width="2"/><g class="tip" transform="translate(${tx},${ty2})"><rect x="-56" y="0" width="112" height="24" rx="8" fill="#101a38" stroke="rgba(255,255,255,.14)"/><text y="16" text-anchor="middle" font-size="11" fill="#e2e8f0">${pts[i].l} · ${avf(pts[i].v)}</text></g></g>`}).join('');
  return`<svg viewBox="0 0 ${Wd} ${Hd}" class="fit"><defs><linearGradient id="dxa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34d399" stop-opacity=".32"/><stop offset="1" stop-color="#34d399" stop-opacity="0"/></linearGradient></defs>${g}${tg}${area?`<path class="dxarea" d="${area}" fill="url(#dxa)"/>`:''}<path class="dxline" d="${ln||'M0,0'}" pathLength="1" fill="none" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" style="filter:drop-shadow(0 0 6px rgba(52,211,153,.55))"/>${dots}<circle class="dxping" cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" fill="none" stroke="#34d399"/></svg>`}
@@ -966,7 +1004,7 @@ function vDash(){
   <div class="dxc lg:col-span-3" style="--d:3"><div class="dxh mb-3 flex items-center gap-2"><span class="dxdot" style="background:#34d399"></span>Resource availability<span class="ml-auto text-[11px] text-slate-400">${RG.label} · double click = timeline</span></div><div class="dxs flex-1 min-h-0 overflow-y-auto pr-1 grid sm:grid-cols-2 xl:grid-cols-3 gap-x-5 gap-y-2 content-start">${S.resources.map((r,i)=>{const L=T.filter(x=>x.c.resId===r.id),q=sum(L,'per'),a=q?sum(L,'on')/q*100:null,col=a===null||a>=99?'linear-gradient(90deg,#10b981,#6ee7b7)':a>=95?'linear-gradient(90deg,#d97706,#fcd34d)':'linear-gradient(90deg,#e11d48,#fda4af)';return L.length?`<div class="rt cursor-pointer" data-rt="${r.id}"><div class="flex justify-between text-[11px] mb-1"><span class="truncate pr-2">${esc(r.name)}</span><span style="color:${pctC(a)}">${avf(a)}</span></div><div class="dxbar"><i style="width:${a===null?100:a}%;background:${col};--i:${i}"></i></div></div>`:''}).join('')}</div></div>
  </div>
  <div class="dxr dxr2 grid lg:grid-cols-4 gap-3 mt-3">
-  <div class="dxc lg:col-span-2" style="--d:4"><div class="dxh mb-1 flex items-center gap-2 flex-wrap"><span class="dxdot" style="background:#34d399"></span>Availability trend<span class="text-[11px] text-slate-400">${V.dxh||RG.a===RG.end?'hourly · '+dmy(RG.a===RG.end?RG.a:clampD(V.d)):'daily · '+RG.label}</span><span class="ml-auto flex gap-1"><button onclick="dxR()" class="dxtg ${V.dxh||RG.key==='day'?'on':''}">Today · hourly</button></span></div>${dxLine(s,cut,n)}</div>
+  <div class="dxc lg:col-span-2" style="--d:4"><div class="dxh mb-1 flex items-center gap-2 flex-wrap"><span class="dxdot" style="background:#34d399"></span>Availability trend<span class="text-[11px] text-slate-400">${V.dxh||RG.a===RG.end?'hourly · '+dmy(RG.a===RG.end?RG.a:clampD(V.d)):'daily · '+RG.label}</span><span class="ml-auto flex gap-1">${RG.key==='all'?[['day','Days'],['week','Weekly']].map(([k,l])=>`<button type="button" onclick="dxMode('${k}')" class="dxtg ${!V.dxh&&DXMODE===k?'on':''}">${l}</button>`).join(''):''}<button onclick="dxR()" class="dxtg ${V.dxh||RG.key==='day'?'on':''}">Today · hourly</button></span></div>${dxLine(s,cut,n)}</div>
   <div class="dxc" style="--d:5"><div class="dxh mb-3 flex items-center gap-2"><span class="dxdot" style="background:#fa3d6e"></span>Activity · ${RG.name}</div><div class="flex-1 min-h-0 flex items-center gap-4 justify-center">${ring}<div class="space-y-1.5">${rg('#fa3d6e','Availability',avf(av),'uptime ÷ total time')+rg('#9be71c','Online now',on+'<span class="text-sm text-slate-400"> / '+n+'</span>','cameras reachable')+rg('#22e4ee','Event-free',free+'<span class="text-sm text-slate-400"> / '+n+'</span>','no downtime in period')}</div></div></div>
   <div class="dxc" style="--d:5"><div class="dxh mb-3 flex items-center gap-2"><span class="dxdot" style="background:#a78bfa"></span>Camera types</div><div class="flex-1 min-h-0 flex items-center gap-4 justify-center">${dxDonut(tc.map(t=>[t[1],TY[t[0]]]).concat([[oth,'#64748b']]),n)}<div class="space-y-1.5">${tc.map(t=>`<div class="flex items-center gap-2.5"><span class="dxdot" style="background:${TY[t[0]]}"></span><div><div class="text-sm">${t[0]} <b class="font-medium">${t[1]}</b></div><div class="text-[11px] text-slate-400">${t[2]} online</div></div></div>`).join('')}</div></div></div>
  </div>
@@ -1149,7 +1187,7 @@ function calcW(c,RG){const w=RG.wins;if(!w||w.length<2)return calc(c,RG.s,RG.e);
  return{sg,rs,off,per,on:per-off,n,av:per?(per-off)/per*100:null,mr:mr?mr[0]:'\u2014'}}
 const reasonStatsW=(cams,RG)=>{const tot={};let ev=0;cams.forEach(c=>{const st=calcW(c,RG);ev+=st.n;Object.entries(st.rs).forEach(([r,v])=>tot[r]=(tot[r]||0)+v)});const a=Object.entries(tot).sort((x,y)=>y[1]-x[1]);return{a,T:a.reduce((t,x)=>t+x[1],0),ev}};
 const dxSel=()=>{const R0=dxRange();return`<div class="flex flex-wrap items-center gap-2"><div class="dxsel">${[['all','All time'],['month','1 Month'],['week','1 Week'],['day','1 Day']].map(([k,l])=>`<button onclick="dxRg('${k}')" class="${(V.rg||'day')===k?'on':''}">${l}</button>`).join('')}</div><button type="button" class="dxrl dxrb" onclick="rpOpen()" title="Click to choose a date range">${R0.label}</button></div>`};
-const dxRg=k=>{if(V.rg==='custom'&&V.rb)V.d=clampD(V.rb);V.rg=k;try{localStorage.setItem('cctv_rg',k)}catch(e){}DXSEEN=0;R()};
+const dxRg=k=>{DXSX=0;if(V.rg==='custom'&&V.rb)V.d=clampD(V.rb);V.rg=k;try{localStorage.setItem('cctv_rg',k)}catch(e){}DXSEEN=0;R()};
 const MONTHP=['month','reason'],NODNAV=['hist','live','cams','users','mail','master','set'];
 const addM=(m,n)=>{const[y,mo]=m.split('-').map(Number),d=new Date(Date.UTC(y,mo-1+n,1));return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')};
 const mlab=m=>['January','February','March','April','May','June','July','August','September','October','November','December'][+m.slice(5,7)-1]+' '+m.slice(0,4);
@@ -1166,7 +1204,8 @@ function R(){TT.length=0;V.d=clampD(V.d);if(V.p!=='track'&&V.sh==='D30')V.sh='AL
  $('#nav').innerHTML=NAV.map(x=>`<button onclick="go('${x[0]}')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm ${V.p===x[0]?'bg-sky-500/15 text-sky-300 border border-sky-500/40':'text-slate-400 hover:bg-white/5'}"><i data-lucide="${x[2]}" class="w-4 h-4"></i>${x[1]}</button>`).join('');
  const dsh=V.p==='dash';$('#main').className=dsh?'p-3':'p-5';$('#main').innerHTML=`<div class="${dsh?'mb-2 flex flex-wrap items-center justify-between gap-2':'mb-4'} noprint"><h1 class="${dsh?'text-lg':'text-2xl'} font-bold tracking-wide">${n[1].toUpperCase()}</h1>${dsh?dxSel():`<div class="text-sm text-slate-400">${SUB[V.p]||''}</div>`}</div>`+n[3]();document.documentElement.classList.toggle('nosb',dsh);$('#dd').innerHTML='<i data-lucide="calendar" class="w-3.5 h-3.5"></i>'+dmy(V.d)+(V.d===fd(now())?' <b>Today</b>':'');{const mm=MONTHP.includes(V.p);$('#dnw').style.display=NODNAV.includes(V.p)?'none':'';$('#dd').onclick=mm?mpick:calOpen;if(mm)$('#dd').innerHTML='<i data-lucide="calendar" class="w-3.5 h-3.5"></i>'+mlab(V.m)+(V.m===fd(now()).slice(0,7)?' <b>This month</b>':'');
 const R1=dsh?dxRange():null,t1=fd(now());$('#dpv').disabled=mm?V.m<=START_D.slice(0,7):dsh?(R1.key==='all'||R1.set||R1.a<=START_D):V.d<=START_D;$('#dnx').disabled=mm?V.m>=t1.slice(0,7):dsh?(R1.key==='all'||R1.set||R1.end>=t1):V.d>=t1}lucide.createIcons();if(document.getElementById('camQ'))camQ();dxFit();requestAnimationFrame(dxFit);setTimeout(dxFit,350)}
-function dxFit(){const d=document.querySelector('.dx'),H=document.documentElement,lk=!!d&&innerWidth>=1024;H.classList.toggle('dlock',lk);if(!d)return;if(!lk){d.style.height='';return}scrollTo(0,0);const m=document.getElementById('main'),pb=m?parseFloat(getComputedStyle(m).paddingBottom)||0:0;d.style.height=Math.max(300,Math.floor(innerHeight-d.getBoundingClientRect().top-pb-2))+'px'}
+function dxFit(){dxSize();dxScroll()}
+function dxSize(){const d=document.querySelector('.dx'),H=document.documentElement,lk=!!d&&innerWidth>=1024;H.classList.toggle('dlock',lk);if(!d)return;if(!lk){d.style.height='';return}scrollTo(0,0);const m=document.getElementById('main'),pb=m?parseFloat(getComputedStyle(m).paddingBottom)||0:0;d.style.height=Math.max(300,Math.floor(innerHeight-d.getBoundingClientRect().top-pb-2))+'px'}
 addEventListener('resize',dxFit);
 let _wb=innerWidth<640?0:innerWidth<1024?1:2;addEventListener('resize',()=>{const b=innerWidth<640?0:innerWidth<1024?1:2;if(b!==_wb){_wb=b;if(b===2)sbT(0);if(V.p==='dash')R()}});
 document.addEventListener('input',e=>{const t=e.target;if(!(t.tagName==='INPUT'&&t.matches('.font-mono[maxlength="5"]'))||!/^insert/.test(e.inputType||''))return;const d=t.value.replace(/\D/g,'').slice(0,4);t.value=d.length>=2?d.slice(0,2)+':'+d.slice(2):d});
